@@ -6,6 +6,7 @@ export const ROUNDS = [
 ];
 const norm = (v) => String(v ?? "").trim();
 const thirdChoice = (v) => { const s=norm(v).toLowerCase(); return ["true","1","yes","on","あり","有"].includes(s)?true:(["false","0","no","off","なし","無"].includes(s)?false:null); };
+export const PODIUM_POINTS = Object.freeze({1:30,2:20,3:10});
 const numeric = (v) => v === null || v === undefined || norm(v) === "" ? null : (Number.isFinite(Number(v)) ? Number(v) : null);
 
 export function normalizeData(input) {
@@ -14,7 +15,8 @@ export function normalizeData(input) {
     teams: (Array.isArray(data.teams) ? data.teams : []).map(t => ({ id: norm(t.id), name: norm(t.name) })).filter(t=>t.id),
     sports: (Array.isArray(data.sports) ? data.sports : []).map(s=>({
       id:norm(s.id), name:norm(s.name), thirdPlace: thirdChoice(s.thirdPlace ?? s.third_place),
-      order: Number(s.order)||0
+      order: Number(s.order)||0,
+      startTime: norm(s.startTime ?? s.start_time), endTime: norm(s.endTime ?? s.end_time), venue: norm(s.venue)
     })).filter(s=>s.id).sort((a,b)=>a.order-b.order),
     matches: (Array.isArray(data.matches)? data.matches:[]).map(m=>({
       sportId:norm(m.sportId ?? m.sport_id), id:norm(m.id).toUpperCase(),
@@ -23,7 +25,7 @@ export function normalizeData(input) {
       status:norm(m.status)||"未開始", winnerId:norm(m.winnerId ?? m.winner_id),
       court:norm(m.court), scheduledAt:norm(m.scheduledAt ?? m.scheduled_at)
     })),
-    points: Object.fromEntries(Object.entries(data.points && typeof data.points==="object" ? data.points : {}).map(([k,v])=>[k,numeric(v)]).filter(([,v])=>v!==null)),
+    points: {...PODIUM_POINTS},
     source: norm(data.source)||"demo",
     updatedAt: norm(data.updatedAt) || null
   };
@@ -90,13 +92,13 @@ export function computeOverall(data){
     const bracket=buildBracket(data,sport.id);
     sportsSummary.push({name:sport.name,completed:bracket.completed});
     if(!bracket.completed) continue;
-    const absent=bracket.ranks.some(r=>data.points[r.rank]===undefined);
+    const absent=bracket.ranks.some(r=>r.rank<=3 && PODIUM_POINTS[r.rank]===undefined);
     if(absent){missingPoints=true;continue}
     completedSports++;
     for(const r of bracket.ranks){
       const item=table.get(r.teamId);
       if(!item)continue;
-      item.points+=data.points[r.rank];
+      item.points+=PODIUM_POINTS[r.rank]??0;
       item.participations++;
       if(r.rank===1)item.first++;
       if(r.rank===2)item.second++;

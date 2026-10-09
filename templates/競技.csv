@@ -1,4 +1,7 @@
-id,name,third_place,order
-volley,バレーボール,未定,1
-dodge,ドッジボール,未定,2
-basket,バスケットボール,未定,3
+id,name,third_place,order,start_time,end_time,venue
+futsal,フットサル,未定,1,,,
+volleyball,バレーボール,未定,2,,,
+basketball,バスケットボール,未定,3,,,
+dodgeball,ドッチボール,未定,4,,,
+tugofwar,綱引き,未定,5,,,
+borrowed,借人競争,未定,6,,,

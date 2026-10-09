@@ -42,9 +42,26 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .status-tag{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800;background:#eff2f5;white-space:nowrap}.status-tag.live{background:#e3f5e9;color:#166f38}
 .point-note{background:#f6f7f9;border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:12px;color:#4b5563;margin:16px 0 0}
 .page-footer{font-size:11px;text-align:center;color:#7a8088;padding:16px 10px 2px}.page-footer p{margin:5px}
-.bottom-nav{position:fixed;z-index:45;bottom:0;left:0;right:0;min-height:calc(var(--bottom) + env(safe-area-inset-bottom));padding:4px max(4px,env(safe-area-inset-left)) env(safe-area-inset-bottom);background:#000;border-top:3px solid var(--yellow);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;box-shadow:0 -4px 15px #0003}
+.bottom-nav{position:fixed;z-index:45;bottom:0;left:0;right:0;min-height:calc(var(--bottom) + env(safe-area-inset-bottom));padding:4px max(4px,env(safe-area-inset-left)) env(safe-area-inset-bottom);background:#000;border-top:3px solid var(--yellow);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;box-shadow:0 -4px 15px #0003}
 .bottom-item{color:#e3e3e3;border:0;background:transparent;border-radius:11px;min-height:57px;display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;font-weight:750;font-size:11px}.bottom-item.active{color:#000;background:var(--yellow)}
 .nav-icon{font-size:20px;line-height:1.2}.bottom-item.active .nav-icon{color:#111}
 @media (min-width:760px){.page-container{padding:calc(var(--header) + 34px) 28px 30px}.content-card{padding:26px 28px 28px}.bracket-mobile{display:none}.bracket-desktop{display:grid;grid-template-columns:1.18fr 1fr 1fr;gap:24px;min-height:610px;margin-top:12px}.bracket-desktop .bracket-column:nth-child(2),.bracket-desktop .bracket-column:nth-child(3){position:relative}.bracket-desktop .bracket-column:nth-child(2):before,.bracket-desktop .bracket-column:nth-child(3):before{content:"";position:absolute;left:-13px;top:18%;bottom:18%;border-left:2px solid #d5d9df}.bottom-nav{left:50%;transform:translateX(-50%);max-width:700px;border-radius:16px 16px 0 0}.match-card{box-shadow:0 2px 8px #00000009}}
 @media (max-width:390px){.top-title{font-size:17px}.content-card{padding:17px 13px}.page-container{padding-left:12px;padding-right:12px}.pill{font-size:12px;padding:9px 12px}.connection-time{font-size:10px}.summary-metric{padding:12px 4px}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
+/* Schedule tab */
+.schedule-range{display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:14px;background:#101114;color:#fff;padding:19px 18px;margin-bottom:16px}
+.schedule-range__time{font-size:clamp(24px,5vw,38px);font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.schedule-range__dash{color:var(--yellow);font-size:23px;font-weight:900}
+.schedule-range__caption{font-size:11px;color:#c5c7cc;margin-top:6px}
+.schedule-list{display:grid;gap:10px;list-style:none;padding:0;margin:0}
+.schedule-item{display:grid;grid-template-columns:minmax(94px,auto) minmax(0,1fr);gap:14px;padding:14px;border:1px solid #e1e4e9;background:#fff;border-radius:12px;align-items:center}
+.schedule-item__time{font-size:13px;font-weight:900;color:#333;font-variant-numeric:tabular-nums;white-space:nowrap}
+.schedule-item__time.pending{font-size:12px;color:#7c828a;font-weight:750}
+.schedule-item__name{font-weight:850;font-size:16px;overflow-wrap:anywhere}
+.schedule-item__place{font-size:12px;color:#69717a;margin-top:2px}
+.schedule-item__order{display:inline-grid;place-items:center;border-radius:8px;width:24px;height:24px;margin-right:7px;background:#fff5c4;font-size:11px;font-weight:900}
+.schedule-caveat{font-size:12px;color:#6b7280;line-height:1.6;margin-top:13px}
+.win-mark{font-size:11px;font-weight:900;background:#ffe689;color:#111;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.bottom-item{font-size:10px}
+@media(max-width:370px){.bottom-item{font-size:9px}.nav-icon{font-size:18px}.schedule-item{grid-template-columns:90px minmax(0,1fr);gap:8px;padding:11px}.schedule-item__name{font-size:14px}}

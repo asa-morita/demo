@@ -1,6 +1,6 @@
 import {normalizeData,buildBracket,computeOverall} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
-const state={tab:"news",sport:"",round:"QF",data:null,lastFetch:null,problem:""};
+const state={tab:"schedule",sport:"",round:"QF",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sportsName=(sport)=>esc(sport?.name||sport?.id||"競技");
 const displayTime=(v)=>{if(!v)return"";const d=new Date(v);return Number.isNaN(d.getTime())?esc(v):new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(d)};
@@ -11,18 +11,42 @@ const pill=(key,label,active,attribute)=>`<button class="pill${active?" active":
 function matchCard(m,short=false){
   const status=m.status==="要確認"?"確認が必要":m.status;
   const css=m.status==="試合中"?"live":m.status==="終了"?"done":m.status==="要確認"?"invalid":"";
-  const score=v=>v===null?"–":esc(v);
-  const row=(id,label,scoreValue)=>`<div class="team-row ${m.winner===id&&id?"winner":""}">
-    <span class="team-name ${id?"":"tbd"}">${esc(label)}</span><span class="score">${score(scoreValue)}</span></div>`;
+  const row=(id,label)=>`<div class="team-row ${m.winner===id&&id?"winner":""}">
+    <span class="team-name ${id?"":"tbd"}">${esc(label)}</span>
+    ${m.winner===id&&id?'<span class="win-mark">勝利</span>':""}</div>`;
   return `<article class="match-card" aria-label="${esc(matchLabel(m))}">
       <div class="match-head"><span class="match-index">${esc(matchLabel(m))}</span><span class="match-state ${css}">${esc(status)}</span></div>
-      ${row(m.teamA,m.labelA,m.scoreA)}${row(m.teamB,m.labelB,m.scoreB)}
+      ${row(m.teamA,m.labelA)}${row(m.teamB,m.labelB)}
       ${m.issue?`<div class="match-foot warning">${esc(m.issue)}</div>`:
       (!short&&m.winner?`<div class="match-foot">勝者：${m.winner===m.teamA?esc(m.labelA):esc(m.labelB)}</div>`:
       (m.court||m.scheduledAt)?`<div class="match-foot">${esc([m.court,m.scheduledAt].filter(Boolean).join(" ／ "))}</div>`:"")}
     </article>`;
 }
 const section=(heading,subtitle,body)=>`<section class="content-card"><h2 class="card-heading">${heading}</h2>${subtitle?`<p class="card-subtitle">${subtitle}</p>`:""}${body}</section>`;
+const validClock=(s)=>/^(?:[01]?\d|2[0-3]):[0-5]\d$/.test(s||"");
+function renderSchedule(data) {
+  const rows=data.sports.map((s,index)=>{
+    const start=validClock(s.startTime)?s.startTime:"";
+    const end=validClock(s.endTime)?s.endTime:"";
+    const time=start&&end?`${start}〜${end}`:start?`${start}〜未定`:"時刻未定";
+    return `<li class="schedule-item">
+      <div class="schedule-item__time ${start?"":"pending"}">${esc(time)}</div>
+      <div><div class="schedule-item__name"><span class="schedule-item__order">${index+1}</span>${sportsName(s)}</div>
+      ${s.venue?`<div class="schedule-item__place">会場：${esc(s.venue)}</div>`:""}</div>
+    </li>`;
+  }).join("");
+  const allTimed=data.sports.length>0&&data.sports.every(s=>validClock(s.startTime)&&validClock(s.endTime));
+  const notice=allTimed?"時間は運営のスプレッドシートから取得しています。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営のスプレッドシートから自動反映されます。";
+  return section("開催予定","体育祭の全体開催時間です。",
+    `<div class="schedule-range">
+      <div><div class="schedule-range__time">12:30</div><div class="schedule-range__caption">開始</div></div>
+      <span class="schedule-range__dash">→</span>
+      <div><div class="schedule-range__time">18:00</div><div class="schedule-range__caption">終了</div></div>
+    </div>
+    <div class="section-row"><h2>実施競技</h2><span class="minor">全${data.sports.length}競技</span></div>
+    <ol class="schedule-list" style="margin-top:14px">${rows}</ol>
+    <p class="schedule-caveat">${esc(notice)}</p>`);
+}
 function renderNews(data){
   const brackets=data.sports.map(s=>buildBracket(data,s.id)).filter(Boolean);
   const all=brackets.flatMap(b=>b.all.map(m=>({m,sport:b.sport})));
@@ -76,13 +100,13 @@ function renderResults(data){
     const groups=[["準々決勝",b.qf],["準決勝",b.sf],["決勝",[b.final]],...(b.third?[["3位決定戦",[b.third]]]:[])];
     return `<section class="content-card"><h2 class="card-heading">${sportsName(s)}</h2>${groups.map(([title,ms])=>
       `<div class="results-group"><h3>${title}</h3><div class="results-list">${ms.map(m=>
-        `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span><span class="mini-score">${m.scoreA??"–"} : ${m.scoreB??"–"}</span><span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>${m.issue?`<small style="color:#a04720;width:100%">${esc(m.issue)}</small>`:""}</div>`).join("")}</div></div>`).join("")}</section>`;
+        `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span><span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>${m.winner?`<span class="status-tag">勝者：${esc(m.winner===m.teamA?m.labelA:m.labelB)}</span>`:""}${m.issue?`<small style="color:#a04720;width:100%">${esc(m.issue)}</small>`:""}</div>`).join("")}</div></div>`).join("")}</section>`;
   }).join("");
   return contents||section("全試合結果",null,`<div class="empty">表示できる競技がありません。</div>`);
 }
 
 function render(){
-  const titles={news:["試合速報","現在の試合状況と最新結果を表示します。"],bracket:["トーナメント表","競技別に8チームの勝ち上がりを確認できます。"],standings:["総合順位","確定した競技のポイントを集計します。"],results:["全試合結果","全競技の試合結果を一覧で表示します。"]};
+  const titles={schedule:["スケジュール","12:30〜18:00の開催概要と各競技の予定です。"],news:["試合速報","現在の試合状況と最新結果を表示します。"],bracket:["トーナメント表","競技別に8チームの勝ち上がりを確認できます。"],standings:["総合順位","確定した競技のポイントを集計します。"],results:["全試合結果","全競技の試合結果を一覧で表示します。"]};
   $("pageHeading").textContent=titles[state.tab][0];$("pageDescription").textContent=titles[state.tab][1];
   document.querySelectorAll("[data-tab]").forEach(b=>{const active=b.dataset.tab===state.tab;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   if(!state.data)return;
@@ -94,10 +118,10 @@ function render(){
     $("sportButtons").innerHTML=choices.map(s=>pill(s.id,s.name,state.sport===s.id,"data-sport")).join("");
   }
   $("demoBanner").hidden=data.source!=="demo";
-  $("view").innerHTML=state.tab==="news"?renderNews(data):state.tab==="bracket"?renderBracket(data):state.tab==="standings"?renderStandings(data):renderResults(data);
+  $("view").innerHTML=state.tab==="schedule"?renderSchedule(data):state.tab==="news"?renderNews(data):state.tab==="bracket"?renderBracket(data):state.tab==="standings"?renderStandings(data):renderResults(data);
 }
 function setTab(tab){
-  if(!["news","bracket","standings","results"].includes(tab))return;
+  if(!["schedule","news","bracket","standings","results"].includes(tab))return;
   state.tab=tab;if(tab==="bracket"&&state.sport==="all")state.sport=state.data?.sports[0]?.id||"";
   render();closeMenu();window.scrollTo({top:0,behavior:"smooth"});
 }

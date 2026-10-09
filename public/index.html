@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="description" content="体育祭の試合速報・競技別トーナメント・総合順位をリアルタイムで確認できます。">
-  <title>体育祭 2026 | 試合速報</title>
+  <title>体育祭 2026 | スケジュール</title>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -21,6 +21,7 @@
   <aside id="appMenu" class="app-menu" aria-label="メニュー" hidden>
     <div class="menu-heading"><strong>メニュー</strong><button id="menuClose" type="button" aria-label="閉じる">×</button></div>
     <nav class="menu-links">
+      <button type="button" data-menu-tab="schedule">スケジュール</button>
       <button type="button" data-menu-tab="news">試合速報</button>
       <button type="button" data-menu-tab="bracket">トーナメント表</button>
       <button type="button" data-menu-tab="standings">総合順位</button>
@@ -31,8 +32,8 @@
   <main class="page-container">
     <div class="page-intro">
       <div class="eyebrow">SPORTS FESTIVAL · 2026</div>
-      <h1 id="pageHeading">試合速報</h1>
-      <p id="pageDescription" class="intro-desc">今行われている試合と、最新の結果を確認できます。</p>
+      <h1 id="pageHeading">スケジュール</h1>
+      <p id="pageDescription" class="intro-desc">12:30〜18:00の開催概要と各競技の予定です。</p>
     </div>
     <div id="connection" class="connection" role="status" aria-live="polite">
       <span class="connection-dot"></span><span id="connectionLabel">データ取得中…</span>
@@ -53,7 +54,10 @@
     </footer>
   </main>
   <nav class="bottom-nav" aria-label="主要メニュー">
-    <button type="button" class="bottom-item active" data-tab="news" aria-current="page">
+    <button type="button" class="bottom-item active" data-tab="schedule" aria-current="page">
+      <span class="nav-icon" aria-hidden="true">▦</span><span>予定</span>
+    </button>
+    <button type="button" class="bottom-item" data-tab="news">
       <span class="nav-icon" aria-hidden="true">●</span><span>速報</span>
     </button>
     <button type="button" class="bottom-item" data-tab="bracket">
