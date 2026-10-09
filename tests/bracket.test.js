@@ -54,7 +54,7 @@ test("changing a quarterfinal winner invalidates stale semifinal and final",()=>
 });
 test("an explicit winner is necessary when the score is tied",()=>{
   const d=fresh(),qf=match(d,"volleyball","QF1");
-  qf.scoreA=21;qf.scoreB=21;
+  qf.scoreA=21;qf.scoreB=21;qf.winnerId="";
   assert.equal(buildBracket(d,"volleyball").qf[0].status,"要確認");
   qf.winnerId="A";
   assert.equal(buildBracket(d,"volleyball").qf[0].winner,"A");
