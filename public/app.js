@@ -57,7 +57,7 @@ function renderStandings(data){
   const overall=computeOverall(data);
   const inProgress=overall.totalSports-overall.completedSports;
   const rows=overall.rows.map(r=>`<tr class="${r.rank===1&&r.points>0?"leader":""}">
-     <td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.points}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
+     <td><span class="rank-symbol">${r.rank??"–"}</span></td><td>${esc(r.name)}</td><td class="num">${r.points}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
   </tr>`).join("");
   const listing=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>合計pt</th><th>優勝</th><th>準優勝</th><th>3位</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   const note=`<p class="point-note">終了した競技のみ加点します。順位が同点の場合は優勝回数、準優勝回数、3位回数で比較し、それらも同じ場合は同順位とします。<br>

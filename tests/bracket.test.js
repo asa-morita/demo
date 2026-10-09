@@ -74,6 +74,12 @@ test("third-place match result finalizes distinct 3rd and 4th rankings",()=>{
   assert.equal(b.ranks.find(r=>r.teamId==="G").rank,3);
   assert.equal(b.ranks.find(r=>r.teamId==="C").rank,4);
 });
+test("no completed sport displays no assigned overall rank",()=>{
+  const d=fresh();d.sports.forEach(s=>{s.thirdPlace=null});
+  const overall=computeOverall(d);
+  assert.equal(overall.completedSports,0);
+  assert.equal(overall.rows[0].rank,null);
+});
 test("missing score allocations block incomplete scoring",()=>{
   const d=fresh();delete d.points["5"];
   const overall=computeOverall(d);
