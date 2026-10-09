@@ -1,0 +1,10 @@
+{
+  "name": "sports-festival-live-brackets",
+  "compatibility_date": "2026-10-09",
+  "main": "./src/worker.js",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  }
+}
