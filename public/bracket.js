@@ -104,6 +104,6 @@ export function computeOverall(data){
     }
   }
   const rows=[...table.values()].sort((a,b)=> b.points-a.points || b.first-a.first || b.second-a.second || b.third-a.third || a.name.localeCompare(b.name,"ja"));
-  rows.forEach((r,i)=>{r.rank=i===0?1:(rows[i-1].points===r.points && rows[i-1].first===r.first && rows[i-1].second===r.second && rows[i-1].third===r.third ? rows[i-1].rank:i+1)});
+  rows.forEach((r,i)=>{r.rank=completedSports===0?null:(i===0?1:(rows[i-1].points===r.points && rows[i-1].first===r.first && rows[i-1].second===r.second && rows[i-1].third===r.third ? rows[i-1].rank:i+1))});
   return {rows,completedSports,totalSports:data.sports.length,sportsSummary,missingPoints};
 }
