@@ -73,16 +73,19 @@ async function getResult(request,env,ctx) {
     const data=await res.json();
     return json({...data,source:"demo",updatedAt:new Date().toISOString()});
   }
-  const cache=caches.default;
+  // Cache API is unavailable in some preview environments. Do not fail the whole API.
+  const cache=typeof caches!=="undefined"?caches.default:null;
   const cacheKey=new Request(new URL("/__result_cache_2026",request.url));
-  const hit=await cache.match(cacheKey);
-  if(hit)return json(await hit.json());
+  if(cache){
+    try{const hit=await cache.match(cacheKey);if(hit)return json(await hit.json())}
+    catch(error){console.warn("Cache read unavailable:",String(error))}
+  }
   if(!inFlight){
     inFlight=fetchSheet(env).then(async result=>{
       lastGood=result;
       try{
         const stored=new Response(JSON.stringify(result),{headers:{"Content-Type":"application/json","Cache-Control":"public, max-age=5"}});
-        ctx.waitUntil(cache.put(cacheKey,stored));
+        if(cache)ctx.waitUntil(cache.put(cacheKey,stored).catch(error=>console.warn("Cache write unavailable:",String(error))));
       }catch(_){}
       return result;
     }).finally(()=>{inFlight=null});

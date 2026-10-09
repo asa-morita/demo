@@ -128,7 +128,7 @@ async function refresh(){
     state.lastFetch=new Date();state.problem="";
     $("alert").hidden=!payload.stale; if(payload.stale)$("alert").textContent="Googleから最新データを取得できず、前回の情報を表示しています。";
     $("connection").dataset.state=payload.stale?"error":"ok";$("connectionLabel").textContent=payload.stale?"前回取得したデータを表示中":"最新データを取得しました";
-    $("updatedAt").textContent="取得 "+displayTime(state.lastFetch.toISOString());
+    $("updatedAt").textContent=(payload.stale?"最終正常取得 ":"取得 ")+displayTime(payload.stale?(payload.updatedAt||state.lastFetch.toISOString()):state.lastFetch.toISOString());
     $("topLive").classList.toggle("offline",!!payload.stale);$("topLive").textContent=payload.stale?"STALE":"LIVE";
     render();
   }catch(e){
