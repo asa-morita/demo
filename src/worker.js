@@ -1,5 +1,5 @@
 // Cloudflare Worker + static assets. No Google credentials are sent to the browser.
-const ranges=["チーム!A2:B","競技!A2:D","試合!A2:J","配点!A2:B"];
+const ranges=["チーム!A2:B","競技!A2:G","試合!A2:J"];
 let tokenCache={token:"",expires:0};
 let inFlight=null;
 let lastGood=null;
@@ -48,15 +48,16 @@ async function fetchSheet(env){
   }
   const body=await response.json();
   const entries=(body.valueRanges||[]).map(x=>x.values||[]);
-  const [teamRows=[],sportRows=[],matchRows=[],pointRows=[]]=entries;
+  const [teamRows=[],sportRows=[],matchRows=[]]=entries;
   const teams=teamRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0])}));
-  const sports=sportRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0]),thirdPlace:thirdChoice(r[2]),order:asNum(r[3])||0}));
+  const sports=sportRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0]),thirdPlace:thirdChoice(r[2]),order:asNum(r[3])||0,startTime:asText(r[4]),endTime:asText(r[5]),venue:asText(r[6])}));
   const matches=matchRows.filter(r=>asText(r[0])&&asText(r[1])).map(r=>({
     sportId:asText(r[0]),id:asText(r[1]),teamA:asText(r[2]),teamB:asText(r[3]),
     scoreA:asNum(r[4]),scoreB:asNum(r[5]),status:asText(r[6])||"未開始",
     winnerId:asText(r[7]),court:asText(r[8]),scheduledAt:asText(r[9])
   }));
-  const points=Object.fromEntries(pointRows.filter(r=>asText(r[0])&&asNum(r[1])!==null).map(r=>[asText(r[0]),asNum(r[1])]));
+  // Podium awards are fixed by event rules; match score columns remain optional for backwards compatibility.
+  const points={"1":30,"2":20,"3":10};
   if(teams.length!==8||!sports.length)throw new Error("シート内容を確認してください（チームは8件、競技は1件以上必要）");
   return {teams,sports,matches,points,source:"sheet",updatedAt:new Date().toISOString()};
 }
