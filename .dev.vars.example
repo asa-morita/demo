@@ -1,0 +1,8 @@
+# Copy this file to .dev.vars for local development.
+# Leave SHEETS_SPREADSHEET_ID absent to use sample data.
+SHEETS_SPREADSHEET_ID=""
+# For a PRIVATE sheet use both entries below. Share the sheet with SHEETS_CLIENT_EMAIL.
+SHEETS_CLIENT_EMAIL=""
+SHEETS_PRIVATE_KEY=""
+# Alternative for a PUBLIC sheet only (do not use together with service account):
+# SHEETS_API_KEY=""

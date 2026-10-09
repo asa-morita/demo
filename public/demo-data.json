@@ -1,0 +1,331 @@
+{
+  "teams": [
+    {
+      "id": "A",
+      "name": "Aチーム"
+    },
+    {
+      "id": "B",
+      "name": "Bチーム"
+    },
+    {
+      "id": "C",
+      "name": "Cチーム"
+    },
+    {
+      "id": "D",
+      "name": "Dチーム"
+    },
+    {
+      "id": "E",
+      "name": "Eチーム"
+    },
+    {
+      "id": "F",
+      "name": "Fチーム"
+    },
+    {
+      "id": "G",
+      "name": "Gチーム"
+    },
+    {
+      "id": "H",
+      "name": "Hチーム"
+    }
+  ],
+  "sports": [
+    {
+      "id": "volleyball",
+      "name": "バレーボール",
+      "thirdPlace": false,
+      "order": 1
+    },
+    {
+      "id": "dodgeball",
+      "name": "ドッジボール",
+      "thirdPlace": true,
+      "order": 2
+    },
+    {
+      "id": "basketball",
+      "name": "バスケットボール",
+      "thirdPlace": false,
+      "order": 3
+    }
+  ],
+  "matches": [
+    {
+      "sportId": "volleyball",
+      "id": "QF1",
+      "teamA": "A",
+      "teamB": "H",
+      "scoreA": 21,
+      "scoreB": 15,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "QF2",
+      "teamA": "B",
+      "teamB": "G",
+      "scoreA": 12,
+      "scoreB": 21,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "QF3",
+      "teamA": "C",
+      "teamB": "F",
+      "scoreA": 21,
+      "scoreB": 11,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "QF4",
+      "teamA": "D",
+      "teamB": "E",
+      "scoreA": 12,
+      "scoreB": 21,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "SF1",
+      "teamA": "A",
+      "teamB": "G",
+      "scoreA": 21,
+      "scoreB": 19,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "SF2",
+      "teamA": "C",
+      "teamB": "E",
+      "scoreA": 10,
+      "scoreB": 21,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "volleyball",
+      "id": "FINAL",
+      "teamA": "A",
+      "teamB": "E",
+      "scoreA": 21,
+      "scoreB": 23,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "QF1",
+      "teamA": "A",
+      "teamB": "H",
+      "scoreA": 2,
+      "scoreB": 1,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "QF2",
+      "teamA": "B",
+      "teamB": "G",
+      "scoreA": 1,
+      "scoreB": 2,
+      "status": "終了",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "QF3",
+      "teamA": "C",
+      "teamB": "F",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "QF4",
+      "teamA": "D",
+      "teamB": "E",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "SF1",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "SF2",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "FINAL",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "dodgeball",
+      "id": "THIRD",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "QF1",
+      "teamA": "A",
+      "teamB": "H",
+      "scoreA": 17,
+      "scoreB": 12,
+      "status": "試合中",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "QF2",
+      "teamA": "B",
+      "teamB": "G",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "QF3",
+      "teamA": "C",
+      "teamB": "F",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "QF4",
+      "teamA": "D",
+      "teamB": "E",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "SF1",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "SF2",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "basketball",
+      "id": "FINAL",
+      "teamA": "",
+      "teamB": "",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    }
+  ],
+  "points": {
+    "1": 10,
+    "2": 7,
+    "3": 5,
+    "4": 3,
+    "5": 1
+  },
+  "source": "demo",
+  "updatedAt": ""
+}
