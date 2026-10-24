@@ -4,7 +4,6 @@ const state={tab:"schedule",sport:"",round:"R1",data:null,lastFetch:null,problem
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sportsName=(sport)=>esc(sport?.name||sport?.id||"競技");
 const displayTime=(v)=>{if(!v)return"";const d=new Date(v);return Number.isNaN(d.getTime())?esc(v):new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(d)};
-const name=(data,id,fallback)=>esc(data.teams.find(t=>t.id===id)?.name||id||fallback||"未定");
 const matchLabel=(m)=>{const parts=/^R([1-3])M([12])$/.exec(m.id);return parts?`第${parts[1]}節・第${parts[2]}試合`:m.id};
 const pill=(key,label,active,attribute)=>`<button class="pill${active?" active":""}" type="button" ${attribute}="${esc(key)}" aria-pressed="${active}">${esc(label)}</button>`;
 
@@ -29,12 +28,19 @@ function renderSchedule(data) {
     const start=validClock(s.startTime)?s.startTime:"";
     const end=validClock(s.endTime)?s.endTime:"";
     const time=start&&end?`${start}〜${end}`:start?`${start}〜未定`:"時刻未定";
+    const league=buildRoundRobin(data,s.id);
+    const done=league.all.filter(m=>m.status==="終了").length;
     return `<li class="schedule-item">
       <div class="schedule-item__time ${start?"":"pending"}">${esc(time)}</div>
       <div><div class="schedule-item__name"><span class="schedule-item__order">${index+1}</span>${sportsName(s)}</div>
-      ${s.venue?`<div class="schedule-item__place">会場：${esc(s.venue)}</div>`:""}</div>
+      <div class="schedule-item__place">${s.venue?`会場：${esc(s.venue)} ／ `:""}4チーム・総当たり6試合（終了${done}試合）</div></div>
     </li>`;
   }).join("");
+  const league=buildRoundRobin(data,data.sports[0]?.id);
+  const fixtureRows=league?league.rounds.map(round=>
+    `<div class="results-group"><h3>${round.label}</h3><div class="results-list">${round.matches.map(m=>
+    `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`).join(""):"";
+  const names=data.teams.map(t=>esc(t.name)).join(" ／ ");
   const allTimed=data.sports.length>0&&data.sports.every(s=>validClock(s.startTime)&&validClock(s.endTime));
   const notice=allTimed?"時間は運営のスプレッドシートから取得しています。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営のスプレッドシートから自動反映されます。";
   return section("開催予定","体育祭の全体開催時間です。",
@@ -45,21 +51,10 @@ function renderSchedule(data) {
     </div>
     <div class="section-row"><h2>実施競技</h2><span class="minor">全${data.sports.length}競技</span></div>
     <ol class="schedule-list" style="margin-top:14px">${rows}</ol>
-    <p class="schedule-caveat">${esc(notice)}</p>`);
-}
-function renderNews(data){
-  const leagues=data.sports.map(s=>buildRoundRobin(data,s.id)).filter(Boolean);
-  const all=leagues.flatMap(b=>b.all.map(m=>({m,sport:b.sport})));
-  const live=all.filter(x=>x.m.status==="試合中");
-  const finished=all.filter(x=>x.m.status==="終了");
-  const count=leagues.reduce((n,b)=>n+b.all.length,0);
-  const totalDone=finished.length;
-  const summary=`<div class="summary-grid"><div class="summary-metric"><div class="metric-number">${data.sports.length}</div><div class="metric-label">競技数</div></div><div class="summary-metric"><div class="metric-number">${live.length}</div><div class="metric-label">試合中</div></div><div class="summary-metric"><div class="metric-number">${totalDone}/${count}</div><div class="metric-label">終了試合</div></div></div>`;
-  const cards=(arr)=>arr.map(x=>`<div><div class="minor" style="margin-bottom:6px;font-weight:800">${sportsName(x.sport)}</div>${matchCard(x.m)}</div>`).join("");
-  const now=live.length?`<div class="matches">${cards(live)}</div>`:`<div class="empty">現在、記録上「試合中」の対戦はありません。</div>`;
-  const recent=finished.length?`<div class="matches">${cards(finished.slice(-6).reverse())}</div>`:`<div class="empty">終了した試合はまだありません。</div>`;
-  return section("大会の進行状況","全競技の試合記録から自動集計しています。",summary)+section("試合中",null,now)+section("最新の試合結果",null,recent)+
-  `<div class="content-card"><div class="section-row"><h2>総合順位を確認</h2><button type="button" class="pill active" data-open-tab="standings">順位を見る →</button></div></div>`;
+    <p class="schedule-caveat">${esc(notice)}</p>`)+
+    section("4チームの総当たり組み合わせ",
+      `参加チーム：${names} ／ 各競技で共通の組み合わせ（3節・6試合）`,
+      fixtureRows+`<p class="point-note">試合ごとの開始時刻・会場は「対戦表」で確認できます。実施競技ごとの順序・時刻は運営の記録を優先します。</p>`);
 }
 function renderBracket(data){
   const league=buildRoundRobin(data,state.sport);
@@ -89,35 +84,22 @@ function renderStandings(data){
       `<div class="point-note">${esc(points||"配点がまだ設定されていません。")}</div>`+
       `<div class="results-group"><h3>競技別の確定状況</h3><div class="results-list">${overall.sportsSummary.map(s=>`<div class="result-row"><span class="versus">${esc(s.name)}</span><span class="status-tag ${s.completed?"":"live"}">${s.completed?"確定":"未確定"}</span></div>`).join("")}</div></div>`);
 }
-function renderResults(data){
-  const sports=state.sport==="all"?data.sports:data.sports.filter(s=>s.id===state.sport);
-  const contents=sports.map(s=>{
-    const league=buildRoundRobin(data,s.id);
-    return `<section class="content-card"><h2 class="card-heading">${sportsName(s)}</h2>${league.rounds.map(round=>
-      `<div class="results-group"><h3>${round.label}</h3><div class="results-list">${round.matches.map(m=>
-        `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span><span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>${m.winner?`<span class="status-tag">勝者：${esc(m.winner===m.teamA?m.labelA:m.labelB)}</span>`:""}${m.issue?`<small style="color:#a04720;width:100%">${esc(m.issue)}</small>`:""}</div>`).join("")}</div></div>`).join("")}</section>`;
-  }).join("");
-  return contents||section("全試合結果",null,`<div class="empty">表示できる競技がありません。</div>`);
-}
 
 function render(){
-  const titles={schedule:["スケジュール","12:30〜18:00の開催概要と各競技の予定です。"],news:["試合速報","現在の試合状況と最新結果を表示します。"],bracket:["総当たり対戦表","競技別に4チームの対戦予定と勝敗順位を確認できます。"],standings:["総合順位","確定した競技のポイントを集計します。"],results:["全試合結果","全競技の試合結果を一覧で表示します。"]};
+  const titles={schedule:["予定","12:30〜18:00の開催予定と4チームの総当たり組み合わせです。"],standings:["総合順位","4チームの競技別ポイントを集計します。"],bracket:["対戦表","4チーム総当たりの試合・勝敗・順位を確認できます。"]};
   $("pageHeading").textContent=titles[state.tab][0];$("pageDescription").textContent=titles[state.tab][1];
   document.querySelectorAll("[data-tab]").forEach(b=>{const active=b.dataset.tab===state.tab;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   if(!state.data)return;
   const data=state.data;
-  const select=state.tab==="bracket"||state.tab==="results";
+  const select=state.tab==="bracket";
   $("sportSelectorSection").hidden=!select;
-  if(select){
-    const choices=state.tab==="results"?[...data.sports,{id:"all",name:"すべて"}]:data.sports;
-    $("sportButtons").innerHTML=choices.map(s=>pill(s.id,s.name,state.sport===s.id,"data-sport")).join("");
-  }
+  if(select)$("sportButtons").innerHTML=data.sports.map(s=>pill(s.id,s.name,state.sport===s.id,"data-sport")).join("");
   $("demoBanner").hidden=data.source!=="demo";
-  $("view").innerHTML=state.tab==="schedule"?renderSchedule(data):state.tab==="news"?renderNews(data):state.tab==="bracket"?renderBracket(data):state.tab==="standings"?renderStandings(data):renderResults(data);
+  $("view").innerHTML=state.tab==="schedule"?renderSchedule(data):state.tab==="standings"?renderStandings(data):renderBracket(data);
 }
 function setTab(tab){
-  if(!["schedule","news","bracket","standings","results"].includes(tab))return;
-  state.tab=tab;if(tab==="bracket"&&state.sport==="all")state.sport=state.data?.sports[0]?.id||"";
+  if(!["schedule","standings","bracket"].includes(tab))return;
+  state.tab=tab;
   render();closeMenu();window.scrollTo({top:0,behavior:"smooth"});
 }
 const closeMenu=()=>{$("appMenu").hidden=true;$("menuBackdrop").hidden=true;$("menuButton").setAttribute("aria-expanded","false")};
