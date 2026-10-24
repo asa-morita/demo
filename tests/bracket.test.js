@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildRoundRobin,computeOverall,FIXTURES} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
@@ -123,4 +123,50 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.match(app,/4チームの総当たり組み合わせ/);
   assert.match(app,/const titles=\{schedule:\["予定"/);
   assert.doesNotMatch(app,/renderNews|renderResults/);
+});
+
+test("5-by-5 display has 4x4 symmetric match cells and diagonal self-matches",()=>{
+  const d=fresh();
+  const league=buildRoundRobin(d,"volleyball");
+  const matrix=buildRoundRobinMatrix(league,d.teams);
+  assert.equal(matrix.length,4);
+  assert.deepEqual(matrix.map(row=>row.length),[4,4,4,4]);
+  assert.equal(matrix.flat().filter(cell=>cell.kind==="diagonal").length,4);
+  assert.equal(matrix.flat().filter(cell=>cell.kind!=="diagonal").length,12);
+  assert.equal(matrix[0][0].kind,"diagonal");
+  assert.equal(matrix[0][2].kind,"loss"); // A loses to C.
+  assert.equal(matrix[2][0].kind,"win");  // C beats A.
+  assert.equal(matrix[0][2].match.id,matrix[2][0].match.id);
+  assert.equal(matrix[2][0].round,"R2");
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    if(i===j)continue;
+    assert.equal(matrix[i][j].match,matrix[j][i].match);
+  }
+});
+test("5-by-5 results matrix distinguishes live, pending and invalid matches",()=>{
+  const d=fresh();
+  const pending=buildRoundRobinMatrix(buildRoundRobin(d,"futsal"),d.teams);
+  assert.equal(pending[0][3].text,"未開始");
+  assert.equal(pending[3][0].kind,"pending");
+  const live=match(d,"futsal","R1M1");
+  live.status="試合中";
+  const during=buildRoundRobinMatrix(buildRoundRobin(d,"futsal"),d.teams);
+  assert.equal(during[0][3].text,"試合中");
+  assert.equal(during[3][0].kind,"live");
+  live.teamB="B";
+  const invalid=buildRoundRobinMatrix(buildRoundRobin(d,"futsal"),d.teams);
+  assert.equal(invalid[0][3].text,"要確認");
+  assert.equal(invalid[3][0].kind,"invalid");
+});
+test("match view markup uses a real five-by-five results table without bracket cards",()=>{
+  const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
+  const css=readFileSync(new URL("../public/style.css",import.meta.url),"utf8");
+  assert.match(app,/buildRoundRobinMatrix\(league,data\.teams\)/);
+  assert.match(app,/<table class="round-robin-table">/);
+  assert.match(app,/scope="row"/);
+  assert.match(app,/scope="col"/);
+  assert.match(app,/matrix-diagonal/);
+  assert.doesNotMatch(app,/bracket-desktop|bracket-mobile|matchCard\(/);
+  assert.match(css,/\.round-robin-table/);
+  assert.match(css,/linear-gradient\(135deg/);
 });

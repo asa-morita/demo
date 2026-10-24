@@ -110,6 +110,27 @@ export function buildRoundRobin(data,sportId) {
   return {sport,rounds,all,standings,completed,ranks};
 }
 
+
+/**
+ * Build the 4x4 body of a 5x5 round-robin results table.
+ * The row is the team whose result is being shown; the column is the opponent.
+ * Diagonal entries represent impossible self-matches.
+ */
+export function buildRoundRobinMatrix(league,teams) {
+  const pairs=new Map(league.all.map(m=>[[m.teamA,m.teamB].sort().join("::"),m]));
+  return teams.map(row=>teams.map(opponent=>{
+    if(row.id===opponent.id)return {kind:"diagonal",text:"",round:"",match:null};
+    const match=pairs.get([row.id,opponent.id].sort().join("::"));
+    if(!match||match.status==="要確認")
+      return {kind:"invalid",text:"要確認",round:match?.round||"",match:match||null};
+    if(match.winner)
+      return {kind:match.winner===row.id?"win":"loss",text:match.winner===row.id?"勝":"敗",round:match.round,match};
+    if(match.status==="試合中")
+      return {kind:"live",text:"試合中",round:match.round,match};
+    return {kind:"pending",text:"未開始",round:match.round,match};
+  }));
+}
+
 export function computeOverall(data) {
   const table=new Map(data.teams.map(t=>[t.id,{id:t.id,name:t.name,points:0,first:0,second:0,third:0,participations:0}]));
   let completedSports=0;

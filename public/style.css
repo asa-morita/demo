@@ -65,3 +65,74 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .win-mark{font-size:11px;font-weight:900;background:#ffe689;color:#111;border-radius:999px;padding:3px 8px;white-space:nowrap}
 .bottom-item{font-size:10px}
 @media(max-width:370px){.bottom-item{font-size:9px}.nav-icon{font-size:18px}.schedule-item{grid-template-columns:90px minmax(0,1fr);gap:8px;padding:11px}.schedule-item__name{font-size:14px}}
+
+/* 5 x 5 round-robin results matrix: header row + four team rows. */
+.round-robin-scroll{
+  max-width:100%;
+  overflow-x:auto;
+  border:1px solid #c9ced5;
+  border-radius:12px;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.round-robin-scroll:focus-visible{outline:3px solid #9c7900;outline-offset:2px}
+.round-robin-table{
+  width:100%;
+  min-width:480px;
+  max-width:none;
+  table-layout:fixed;
+  border-collapse:collapse;
+  font-size:14px;
+}
+.round-robin-table th,.round-robin-table td{
+  width:20%;
+  height:82px;
+  padding:8px 5px;
+  border:1px solid #c9ced5;
+  text-align:center;
+  vertical-align:middle;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.round-robin-table tr:first-child th{border-top:0}
+.round-robin-table tr:last-child>*{border-bottom:0}
+.round-robin-table tr>*:first-child{border-left:0}
+.round-robin-table tr>*:last-child{border-right:0}
+.round-robin-table .matrix-team-heading{
+  background:#171717;
+  color:#fff;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.4;
+}
+.round-robin-table tbody th.matrix-team-heading{position:sticky;left:0;z-index:1}
+.round-robin-table .matrix-diagonal{
+  background-color:#edf0f2;
+  background-image:linear-gradient(135deg,transparent calc(50% - 1px),#939ca7 50%,transparent calc(50% + 1px));
+}
+.round-robin-table .matrix-corner{background-color:#f6f7f9}
+.round-robin-table td.matrix-result{font-weight:750}
+.matrix-result__main{display:block;font-size:16px;font-weight:900;line-height:1.3}
+.matrix-result__round{display:block;font-size:10px;font-weight:650;margin-top:4px;opacity:.72}
+.round-robin-table .matrix-win{background:#fff0a6;color:#262000}
+.round-robin-table .matrix-loss{background:#f0f2f4;color:#52606c}
+.round-robin-table .matrix-pending{background:#fff;color:#64707c}
+.round-robin-table .matrix-live{background:#ddf6e7;color:#16623c}
+.round-robin-table .matrix-invalid{background:#fff0e6;color:#a94412}
+.matrix-help{font-size:12px;color:#606a75;margin:12px 0 4px}
+.matrix-legend{display:flex;flex-wrap:wrap;gap:8px 15px;margin-top:12px;font-size:12px;color:#48515c}
+.matrix-legend__item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.matrix-legend__item i{display:inline-block;width:13px;height:13px;border:1px solid #b9c0c9;border-radius:3px}
+.matrix-legend__item .matrix-win{background:#fff0a6}
+.matrix-legend__item .matrix-loss{background:#f0f2f4}
+.matrix-legend__item .matrix-pending{background:#fff}
+.matrix-legend__item .matrix-live{background:#ddf6e7}
+.matrix-legend__item .matrix-invalid{background:#fff0e6}
+.matrix-visually-hidden{position:absolute!important;clip:rect(0,0,0,0);clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
+@media(max-width:600px){
+  .round-robin-table{min-width:410px}
+  .round-robin-table th,.round-robin-table td{height:76px;padding:7px 4px}
+  .round-robin-table .matrix-team-heading{font-size:12px}
+  .matrix-result__main{font-size:14px}
+  .matrix-result__round{font-size:10px}
+}
