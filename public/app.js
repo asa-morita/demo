@@ -109,7 +109,7 @@ $("menuClose").addEventListener("click",closeMenu);$("menuBackdrop").addEventLis
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
 document.addEventListener("click",e=>{
   const tab=e.target.closest("[data-tab],[data-menu-tab],[data-open-tab]");
-  if(tab){setTab(tab.dataset.tab||tab.dataset.menuTab||tab.dataset.openTab);return}
+  if(tab){setTab(tab.dataset.tab||tab.dataset.menuTab);return}
   const sport=e.target.closest("[data-sport]");
   if(sport){state.sport=sport.dataset.sport;state.round="R1";render();return}
   const round=e.target.closest("[data-round]");
