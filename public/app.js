@@ -62,7 +62,7 @@ function renderBracket(data){
     }).join("");
     return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
   }).join("");
-  const matrix=`<div class="round-robin-scroll" role="region" tabindex="0" aria-label="${sportsName(league.sport)}の4チーム総当たり対戦表。横方向にスクロールできます">
+  const matrix=`<div class="round-robin-frame" role="group" aria-label="${sportsName(league.sport)}の4チーム総当たり対戦表">
     <table class="round-robin-table">
       <thead><tr><th class="matrix-corner matrix-diagonal" scope="col" aria-label="縦軸は自チーム、横軸は対戦相手"><span class="matrix-visually-hidden">縦：自チーム、横：対戦相手</span></th>${headings}</tr></thead>
       <tbody>${body}</tbody>
