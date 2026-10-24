@@ -1,119 +1,121 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildBracket,computeOverall} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,computeOverall,FIXTURES} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
 const match=(d,sport,id)=>d.matches.find(m=>m.sportId===sport&&m.id===id);
 
-test("normalizeData reads the 8 teams and multiple sports",()=>{
+test("demo contains four teams and six sports with 6 unique pairings each",()=>{
   const d=fresh();
-  assert.equal(d.teams.length,8);
+  assert.deepEqual(d.teams.map(t=>t.id),["A","B","C","D"]);
   assert.equal(d.sports.length,6);
   assert.deepEqual(d.sports.map(x=>x.name),["フットサル","バレーボール","バスケットボール","ドッチボール","綱引き","借人競争"]);
-  assert.equal(d.sports.find(s=>s.id==="dodgeball").thirdPlace,true);
-  assert.equal(d.sports.find(s=>s.id==="volleyball").thirdPlace,false);
+  assert.equal(FIXTURES.length,6);
+  for(const s of d.sports){
+    const league=buildRoundRobin(d,s.id);
+    assert.equal(league.rounds.length,3);
+    assert.deepEqual(league.rounds.map(r=>r.matches.length),[2,2,2]);
+    const pairs=league.all.map(m=>[m.teamA,m.teamB].sort().join("-"));
+    assert.equal(new Set(pairs).size,6);
+    for(const t of d.teams)assert.equal(league.all.filter(m=>m.teamA===t.id||m.teamB===t.id).length,3);
+  }
 });
-test("a completed 7-game bracket advances winners and assigns tied 3rd and 5th",()=>{
-  const b=buildBracket(fresh(),"volleyball");
-  assert.equal(b.qf[0].winner,"A");
-  assert.equal(b.sf[0].teamA,"A");assert.equal(b.sf[0].teamB,"G");
-  assert.equal(b.final.teamA,"A");assert.equal(b.final.teamB,"E");
-  assert.equal(b.final.winner,"E");
-  assert.equal(b.completed,true);
-  assert.equal(b.ranks.length,8);
-  assert.deepEqual(b.ranks.filter(r=>r.rank===3).map(r=>r.teamId).sort(),["C","G"]);
-  assert.equal(b.ranks.filter(r=>r.rank===5).length,4);
+test("a completed round robin ranks teams by wins and awards podium points",()=>{
+  const d=fresh(),league=buildRoundRobin(d,"volleyball");
+  assert.equal(league.completed,true);
+  assert.deepEqual(league.standings.map(r=>[r.id,r.wins,r.losses,r.rank]),[
+    ["C",3,0,1],["A",2,1,2],["D",1,2,3],["B",0,3,4]
+  ]);
+  const overall=computeOverall(d);
+  assert.equal(overall.completedSports,1);
+  assert.deepEqual(Object.fromEntries(overall.rows.map(r=>[r.id,r.points])),{C:30,A:20,D:10,B:0});
 });
-test("standings count only completed sports using spreadsheet points",()=>{
-  const o=computeOverall(fresh());
-  assert.equal(o.completedSports,1);
-  assert.equal(o.rows[0].id,"E");
-  assert.equal(o.rows[0].points,30);
-  assert.equal(o.rows.find(r=>r.id==="A").points,20);
-  assert.equal(o.rows.find(r=>r.id==="C").points,10);
-  assert.equal(o.rows.find(r=>r.id==="D").points,0);
-});
-test("third-place undecided prevents final ranking even if final match finished",()=>{
-  const d=fresh();d.sports.find(s=>s.id==="volleyball").thirdPlace=null;
-  const b=buildBracket(d,"volleyball");
-  assert.equal(b.final.winner,"E");
+test("a non-complete sport shows provisional wins but gives no overall points",()=>{
+  const d=fresh();
+  const last=match(d,"volleyball","R3M2");last.winnerId="";last.status="未開始";
+  const b=buildRoundRobin(d,"volleyball");
   assert.equal(b.completed,false);
+  assert.equal(b.ranks.length,0);
+  assert.equal(b.standings.find(r=>r.id==="C").wins,2);
   assert.equal(computeOverall(d).completedSports,0);
 });
-test("changing a quarterfinal winner invalidates stale semifinal and final",()=>{
-  const d=fresh(),qf=match(d,"volleyball","QF1");
-  qf.winnerId="H";
-  const b=buildBracket(d,"volleyball");
-  assert.equal(b.qf[0].winner,"H");
-  assert.equal(b.sf[0].status,"要確認");
-  assert.match(b.sf[0].issue,/一致しません/);
-  assert.equal(b.final.winner,null);
-  assert.equal(b.completed,false);
-});
-test("an explicit winner is necessary when the score is tied",()=>{
-  const d=fresh(),qf=match(d,"volleyball","QF1");
-  qf.scoreA=21;qf.scoreB=21;qf.winnerId="";
-  assert.equal(buildBracket(d,"volleyball").qf[0].status,"要確認");
-  qf.winnerId="A";
-  assert.equal(buildBracket(d,"volleyball").qf[0].winner,"A");
-});
-test("live score alone does not advance a team",()=>{
-  const d=fresh(),qf=match(d,"volleyball","QF1");
-  qf.status="試合中";
-  const b=buildBracket(d,"volleyball");
-  assert.equal(b.qf[0].winner,null);
-  assert.equal(b.sf[0].winner,null);
-});
-test("third-place match result finalizes distinct 3rd and 4th rankings",()=>{
-  const d=fresh(),s=d.sports.find(s=>s.id==="volleyball");s.thirdPlace=true;
-  d.matches.push({sportId:"volleyball",id:"THIRD",teamA:"G",teamB:"C",scoreA:null,scoreB:null,status:"終了",winnerId:"G",court:"",scheduledAt:""});
-  const b=buildBracket(d,"volleyball");
-  assert.equal(b.completed,true);
-  assert.equal(b.third.winner,"G");
-  assert.equal(b.ranks.find(r=>r.teamId==="G").rank,3);
-  assert.equal(b.ranks.find(r=>r.teamId==="C").rank,4);
-});
-test("no completed sport displays no assigned overall rank",()=>{
-  const d=fresh();d.sports.forEach(s=>{s.thirdPlace=null});
-  const overall=computeOverall(d);
-  assert.equal(overall.completedSports,0);
-  assert.equal(overall.rows[0].rank,null);
-});
-test("only podium finishers receive 30, 20, or 10 points",()=>{
+test("two-team win ties are settled head-to-head",()=>{
   const d=fresh();
-  d.points={"1":1,"2":2,"3":3,"5":99};
-  const o=computeOverall(d);
-  assert.equal(o.completedSports,1);
-  assert.equal(o.rows.find(r=>r.id==="E").points,30);
-  assert.equal(o.rows.find(r=>r.id==="A").points,20);
-  assert.equal(o.rows.find(r=>r.id==="G").points,10);
-  assert.equal(o.rows.find(r=>r.id==="D").points,0);
+  const winners={R1M1:"A",R1M2:"B",R2M1:"A",R2M2:"D",R3M1:"B",R3M2:"C"};
+  for(const [id,w] of Object.entries(winners))match(d,"volleyball",id).winnerId=w;
+  const b=buildRoundRobin(d,"volleyball");
+  assert.equal(b.completed,true);
+  assert.deepEqual(b.standings.map(r=>[r.id,r.rank]),[["B",1],["A",2],["C",3],["D",4]]);
 });
-test("schedule information is preserved and empty times remain unscheduled",()=>{
+test("three-way cyclic tie shares rank and podium points",()=>{
+  const d=fresh();
+  const winners={R1M1:"A",R1M2:"B",R2M1:"C",R2M2:"B",R3M1:"A",R3M2:"C"};
+  for(const [id,w] of Object.entries(winners))match(d,"volleyball",id).winnerId=w;
+  const b=buildRoundRobin(d,"volleyball");
+  assert.deepEqual(b.standings.map(r=>r.rank),[1,1,1,4]);
+  const overall=computeOverall(d);
+  assert.deepEqual(overall.rows.map(r=>r.points),[30,30,30,0]);
+});
+test("wrong opponents, winner, and duplicate IDs do not award points",()=>{
+  const d=fresh();
+  match(d,"volleyball","R1M1").teamB="B";
+  let b=buildRoundRobin(d,"volleyball");
+  assert.equal(b.all[0].status,"要確認");
+  assert.equal(b.completed,false);
+  match(d,"volleyball","R1M1").teamB="D";
+  match(d,"volleyball","R1M1").winnerId="Z";
+  b=buildRoundRobin(d,"volleyball");
+  assert.match(b.all[0].issue,/勝者ID/);
+  match(d,"volleyball","R1M1").winnerId="A";
+  d.matches.push({...match(d,"volleyball","R1M1")});
+  assert.match(buildRoundRobin(d,"volleyball").all[0].issue,/重複/);
+});
+test("wins are accepted only for finished games",()=>{
+  const d=fresh(),game=match(d,"volleyball","R1M1");
+  game.status="試合中";
+  assert.equal(buildRoundRobin(d,"volleyball").all[0].status,"要確認");
+  game.winnerId="";
+  assert.equal(buildRoundRobin(d,"volleyball").all[0].status,"試合中");
+  assert.equal(buildRoundRobin(d,"volleyball").all[0].winner,null);
+});
+test("score columns are optional and can infer a winner for legacy data",()=>{
+  const d=fresh(),game=match(d,"volleyball","R1M1");
+  game.winnerId="";
+  game.scoreA=3;game.scoreB=1;
+  assert.equal(buildRoundRobin(d,"volleyball").all[0].winner,"A");
+  game.scoreB=3;
+  assert.match(buildRoundRobin(d,"volleyball").all[0].issue,/引き分け不可/);
+});
+test("missing team or incomplete matches never produce an overall award",()=>{
+  const d=fresh();
+  d.teams.pop();
+  assert.equal(buildRoundRobin(d,"volleyball").completed,false);
+  const d2=fresh();
+  d2.matches=d2.matches.filter(m=>!(m.sportId==="volleyball"&&m.id==="R1M1"));
+  assert.equal(buildRoundRobin(d2,"volleyball").completed,false);
+});
+test("fixed 30/20/10 points override any spreadsheet-provided points",()=>{
+  const d=fresh();
+  d.points={1:999,2:999,3:999};
+  const overall=computeOverall(d);
+  assert.equal(overall.rows.find(r=>r.id==="C").points,30);
+  assert.equal(overall.rows.find(r=>r.id==="D").points,10);
+});
+test("schedule fields are preserved with empty times",()=>{
   const raw=structuredClone(sample);
-  raw.sports[0].startTime="12:30";
-  raw.sports[0].endTime="13:20";
-  raw.sports[0].venue="体育館";
+  raw.sports[0].startTime="12:30";raw.sports[0].endTime="13:20";raw.sports[0].venue="体育館";
   const d=normalizeData(raw);
-  assert.equal(d.sports[0].name,"フットサル");
-  assert.equal(d.sports[0].startTime,"12:30");
-  assert.equal(d.sports[0].endTime,"13:20");
-  assert.equal(d.sports[0].venue,"体育館");
+  assert.deepEqual([d.sports[0].startTime,d.sports[0].endTime,d.sports[0].venue],["12:30","13:20","体育館"]);
   assert.equal(d.sports[1].startTime,"");
 });
-test("match score input is unnecessary when winner_id is explicitly set",()=>{
-  const d=fresh();
-  const qf=match(d,"volleyball","QF1");
-  assert.equal(qf.scoreA,null);
-  assert.equal(qf.scoreB,null);
-  assert.equal(qf.winnerId,"A");
-  assert.equal(buildBracket(d,"volleyball").qf[0].winner,"A");
-});
-test("scoreboards are absent from viewer markup",()=>{
+test("web pages refer to a 4-team round robin and do not show match scores",()=>{
   const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
-  assert.doesNotMatch(app,/m\\.scoreA\\s*\\?\\?/);
+  assert.match(app,/buildRoundRobin/);
+  assert.match(app,/4チーム総当たり/);
+  assert.doesNotMatch(app,/m\.scoreA\s*\?\?/);
   const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
   assert.match(html,/data-tab="schedule"/);
+  assert.match(html,/総当たり/);
 });
