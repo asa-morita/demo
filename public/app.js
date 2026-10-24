@@ -108,7 +108,7 @@ $("menuButton").addEventListener("click",()=>$("appMenu").hidden?openMenu():clos
 $("menuClose").addEventListener("click",closeMenu);$("menuBackdrop").addEventListener("click",closeMenu);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
 document.addEventListener("click",e=>{
-  const tab=e.target.closest("[data-tab],[data-menu-tab],[data-open-tab]");
+  const tab=e.target.closest("[data-tab],[data-menu-tab]");
   if(tab){setTab(tab.dataset.tab||tab.dataset.menuTab);return}
   const sport=e.target.closest("[data-sport]");
   if(sport){state.sport=sport.dataset.sport;state.round="R1";render();return}
@@ -123,9 +123,9 @@ async function refresh(){
     const payload=await r.json();
     if(payload.error)throw new Error(payload.error);
     const next=normalizeData(payload);
-    if(!next.teams.length||!next.sports.length)throw new Error("データが不足しています");
+    if(next.teams.length!==4||new Set(next.teams.map(t=>t.id)).size!==4||!next.sports.length)throw new Error("4チームのデータが不足しています");
     state.data=next;
-    if(!next.sports.some(s=>s.id===state.sport)&&state.sport!=="all")state.sport=next.sports[0].id;
+    if(!next.sports.some(s=>s.id===state.sport))state.sport=next.sports[0].id;
     state.lastFetch=new Date();state.problem="";
     $("alert").hidden=!payload.stale; if(payload.stale)$("alert").textContent="Googleから最新データを取得できず、前回の情報を表示しています。";
     $("connection").dataset.state=payload.stale?"error":"ok";$("connectionLabel").textContent=payload.stale?"前回取得したデータを表示中":"最新データを取得しました";
