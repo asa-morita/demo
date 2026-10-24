@@ -1,3 +1,4 @@
+import {handleAdminApi,validateMatchUpdate} from "./admin.js";
 // Cloudflare Worker + static assets. No Google credentials are sent to the browser.
 const ranges=["チーム!A2:B","競技!A2:G","試合!A2:J"];
 let tokenCache={token:"",expires:0};
@@ -16,7 +17,7 @@ async function getGoogleToken(env) {
   if(!email||!secret)throw new Error("Googleサービスアカウントの設定が不足しています");
   const now=Math.floor(Date.now()/1000);
   const header=encodeJSON({alg:"RS256",typ:"JWT"});
-  const claims=encodeJSON({iss:email,scope:"https://www.googleapis.com/auth/spreadsheets.readonly",
+  const claims=encodeJSON({iss:email,scope:"https://www.googleapis.com/auth/spreadsheets",
     aud:"https://oauth2.googleapis.com/token",iat:now,exp:now+3600});
   const text=header+"."+claims;
   const clean=secret.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g,"");
@@ -60,6 +61,42 @@ async function fetchSheet(env){
   if(teams.length!==4||new Set(teams.map(t=>t.id)).size!==4||!sports.length)throw new Error("シート内容を確認してください（チームは重複なしで4件、競技は1件以上必要）");
   return {teams,sports,matches,points,source:"sheet",updatedAt:new Date().toISOString()};
 }
+// Obtain fresh match rows for their original row numbers before writing G/H.
+async function readMatchSheetRows(env,token){
+  const id=encodeURIComponent(asText(env.SHEETS_SPREADSHEET_ID));
+  const range=encodeURIComponent("'試合'!A2:J");
+  const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${range}`,{
+    headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(10000)
+  });
+  if(!res.ok)throw new Error("Match sheet read failed: "+res.status);
+  const body=await res.json();
+  return body.values||[];
+}
+async function saveSheetMatch(env,input,request){
+  const token=await getGoogleToken(env);
+  const [data,rows]=await Promise.all([fetchSheet(env),readMatchSheetRows(env,token)]);
+  let checked;
+  try{checked=validateMatchUpdate(input,data,rows)}
+  catch(e){if(!e.conflict)e.validation=true;throw e}
+  const spreadsheetId=encodeURIComponent(asText(env.SHEETS_SPREADSHEET_ID));
+  const range=`'試合'!G${checked.rowIndex}:H${checked.rowIndex}`;
+  const path=encodeURIComponent(range);
+  const response=await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${path}?valueInputOption=RAW`,{
+    method:"PUT",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify({range,majorDimension:"ROWS",values:[[checked.status,checked.winnerId]]}),
+    signal:AbortSignal.timeout(10000)
+  });
+  if(!response.ok)throw new Error("Google Sheets update failed: "+response.status);
+  lastGood=null;
+  inFlight=null;
+  if(typeof caches!=="undefined"&&caches.default){
+    try{await caches.default.delete(new Request(new URL("/__result_cache_2026",request.url)))}
+    catch(error){console.warn("Result cache invalidation failed:",String(error))}
+  }
+  return {sportId:input.sportId,matchId:input.matchId,status:checked.status,winnerId:checked.winnerId};
+}
+
 function json(payload,status=200){
   return new Response(JSON.stringify(payload),{status,headers:{
     "Content-Type":"application/json; charset=utf-8",
@@ -104,6 +141,18 @@ export default {
     if(url.pathname==="/api/results"){
       if(request.method!=="GET")return json({error:"Method not allowed"},405);
       return getResult(request,env,ctx);
+    }
+    if(url.pathname==="/admin"||url.pathname==="/admin/"){
+      if(request.method!=="GET")return json({error:"Method not allowed"},405);
+      const page=await env.ASSETS.fetch(new Request(new URL("/admin.html",request.url)));
+      const headers=new Headers(page.headers);
+      headers.set("Cache-Control","no-store");
+      headers.set("X-Frame-Options","DENY");
+      headers.set("Content-Security-Policy","default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
+      return new Response(page.body,{status:page.status,headers});
+    }
+    if(url.pathname.startsWith("/api/admin/")){
+      return handleAdminApi(request,env,{getData:fetchSheet,saveMatch:saveSheetMatch});
     }
     return env.ASSETS.fetch(request);
   }
