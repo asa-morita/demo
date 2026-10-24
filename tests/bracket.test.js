@@ -116,6 +116,11 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.match(app,/4チーム総当たり/);
   assert.doesNotMatch(app,/m\.scoreA\s*\?\?/);
   const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
-  assert.match(html,/data-tab="schedule"/);
-  assert.match(html,/総当たり/);
+  assert.deepEqual([...html.matchAll(/data-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
+  assert.deepEqual([...html.matchAll(/data-menu-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
+  assert.match(html,/総合順位/);
+  assert.doesNotMatch(html,/data-tab="news"|data-tab="results"/);
+  assert.match(app,/4チームの総当たり組み合わせ/);
+  assert.match(app,/const titles=\{schedule:\["予定"/);
+  assert.doesNotMatch(app,/renderNews|renderResults/);
 });
