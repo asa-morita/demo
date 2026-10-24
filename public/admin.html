@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>結果入力 | 体育祭 2026 管理画面</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script type="module" src="/admin.js"></script>
+</head>
+<body>
+  <header class="admin-header"><strong>体育祭 2026 <span>管理画面</span></strong><a href="/">公開画面に戻る</a></header>
+  <main>
+    <h1>試合結果の入力</h1>
+    <p class="lead">競技ごとに全6試合の状態と勝者を登録します。保存した内容はGoogleスプレッドシートに反映されます。</p>
+    <div id="message" class="message" role="status" aria-live="polite">認証状態を確認しています…</div>
+    <section id="loginPanel" class="panel" hidden>
+      <h2>管理者ログイン</h2>
+      <form id="loginForm">
+        <label for="password">管理者パスワード</label>
+        <input id="password" type="password" minlength="1" autocomplete="current-password" required>
+        <button type="submit" class="primary">ログイン</button>
+      </form>
+      <p class="hint">管理者認証はCloudflare WorkerのSecretsで設定します。公開サイトからパスワードは確認できません。</p>
+    </section>
+    <section id="editorPanel" hidden>
+      <div class="panel toolbar">
+        <label for="sportSelect">競技を選択</label>
+        <select id="sportSelect"></select>
+        <button type="button" id="refreshButton">最新情報を再読込</button>
+        <button type="button" id="logoutButton">ログアウト</button>
+      </div>
+      <p class="hint">「未開始」「試合中」では勝者は記録されません。「終了」にして勝者を選ぶと結果が確定します。変更は1試合ずつ保存してください。</p>
+      <div id="matchList" class="match-list"></div>
+    </section>
+  </main>
+</body>
+</html>
