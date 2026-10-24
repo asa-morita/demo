@@ -1,26 +1,12 @@
-import {normalizeData,buildRoundRobin,computeOverall} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
-const state={tab:"schedule",sport:"",round:"R1",data:null,lastFetch:null,problem:""};
+const state={tab:"schedule",sport:"",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sportsName=(sport)=>esc(sport?.name||sport?.id||"競技");
 const displayTime=(v)=>{if(!v)return"";const d=new Date(v);return Number.isNaN(d.getTime())?esc(v):new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(d)};
 const matchLabel=(m)=>{const parts=/^R([1-3])M([12])$/.exec(m.id);return parts?`第${parts[1]}節・第${parts[2]}試合`:m.id};
 const pill=(key,label,active,attribute)=>`<button class="pill${active?" active":""}" type="button" ${attribute}="${esc(key)}" aria-pressed="${active}">${esc(label)}</button>`;
 
-function matchCard(m,short=false){
-  const status=m.status==="要確認"?"確認が必要":m.status;
-  const css=m.status==="試合中"?"live":m.status==="終了"?"done":m.status==="要確認"?"invalid":"";
-  const row=(id,label)=>`<div class="team-row ${m.winner===id&&id?"winner":""}">
-    <span class="team-name ${id?"":"tbd"}">${esc(label)}</span>
-    ${m.winner===id&&id?'<span class="win-mark">勝利</span>':""}</div>`;
-  return `<article class="match-card" aria-label="${esc(matchLabel(m))}">
-      <div class="match-head"><span class="match-index">${esc(matchLabel(m))}</span><span class="match-state ${css}">${esc(status)}</span></div>
-      ${row(m.teamA,m.labelA)}${row(m.teamB,m.labelB)}
-      ${m.issue?`<div class="match-foot warning">${esc(m.issue)}</div>`:
-      (!short&&m.winner?`<div class="match-foot">勝者：${m.winner===m.teamA?esc(m.labelA):esc(m.labelB)}</div>`:
-      (m.court||m.scheduledAt)?`<div class="match-foot">${esc([m.court,m.scheduledAt].filter(Boolean).join(" ／ "))}</div>`:"")}
-    </article>`;
-}
 const section=(heading,subtitle,body)=>`<section class="content-card"><h2 class="card-heading">${heading}</h2>${subtitle?`<p class="card-subtitle">${subtitle}</p>`:""}${body}</section>`;
 const validClock=(s)=>/^(?:[01]?\d|2[0-3]):[0-5]\d$/.test(s||"");
 function renderSchedule(data) {
@@ -59,14 +45,41 @@ function renderSchedule(data) {
 function renderBracket(data){
   const league=buildRoundRobin(data,state.sport);
   if(!league)return section("対戦表",null,`<div class="empty">競技を選択してください。</div>`);
-  const desktop=`<div class="bracket-desktop">${league.rounds.map(round=>`<div class="bracket-column"><h3>${round.label}</h3>${round.matches.map(m=>matchCard(m,true)).join("")}</div>`).join("")}</div>`;
-  const active=league.rounds.find(r=>r.id===state.round)||league.rounds[0];
-  const mobile=`<div class="bracket-mobile"><div class="round-switch">${league.rounds.map(r=>pill(r.id,r.label,r.id===active.id,"data-round")).join("")}</div><div class="matches">${active.matches.map(m=>matchCard(m)).join("")}</div></div>`;
+  const cells=buildRoundRobinMatrix(league,data.teams);
+  const headings=data.teams.map(t=>
+    `<th scope="col" class="matrix-team-heading" title="${esc(t.name)}">${esc(t.name)}</th>`).join("");
+  const body=cells.map((row,i)=>{
+    const team=data.teams[i];
+    const columns=row.map((cell,j)=>{
+      if(cell.kind==="diagonal")
+        return `<td class="matrix-diagonal" aria-label="${esc(team.name)}同士は対戦なし"><span class="matrix-visually-hidden">対戦なし</span></td>`;
+      const opponent=data.teams[j];
+      const m=cell.match;
+      const detail=[m?matchLabel(m):"対戦情報なし",m?.court,m?.scheduledAt,cell.kind==="invalid"?m?.issue:""].filter(Boolean).join(" ／ ");
+      const label=`${team.name} 対 ${opponent.name}：${cell.text}（${detail}）`;
+      return `<td class="matrix-result matrix-${cell.kind}" aria-label="${esc(label)}" title="${esc(detail)}">
+        <span class="matrix-result__main">${esc(cell.text)}</span><span class="matrix-result__round">${esc(cell.round.replace("R","第")+"節")}</span></td>`;
+    }).join("");
+    return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
+  }).join("");
+  const matrix=`<div class="round-robin-scroll" role="region" tabindex="0" aria-label="${sportsName(league.sport)}の4チーム総当たり対戦表。横方向にスクロールできます">
+    <table class="round-robin-table">
+      <thead><tr><th class="matrix-corner matrix-diagonal" scope="col" aria-label="縦軸は自チーム、横軸は対戦相手"><span class="matrix-visually-hidden">縦：自チーム、横：対戦相手</span></th>${headings}</tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>
+    <p class="matrix-help">縦のチームから見た対戦結果を表示します。斜線は同じチーム同士の対戦なしを表します。</p>
+    <div class="matrix-legend" aria-label="対戦結果の凡例">
+      <span class="matrix-legend__item"><i class="matrix-win"></i>勝</span>
+      <span class="matrix-legend__item"><i class="matrix-loss"></i>敗</span>
+      <span class="matrix-legend__item"><i class="matrix-pending"></i>未開始</span>
+      <span class="matrix-legend__item"><i class="matrix-live"></i>試合中</span>
+      <span class="matrix-legend__item"><i class="matrix-invalid"></i>要確認</span>
+    </div>`;
   const rows=league.standings.map(r=>`<tr class="${r.rank===1&&league.completed?"leader":""}"><td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.played}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td></tr>`).join("");
   const standingTable=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>試合</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   return section(sportsName(league.sport)+" の対戦表",
     `4チーム総当たり（各3試合、全6試合） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
-    desktop+mobile)+section(sportsName(league.sport)+" の競技別順位",
+    matrix)+section(sportsName(league.sport)+" の競技別順位",
     league.completed?"6試合の結果による確定順位です。":"現在の勝敗による暫定順位です。総合ポイントは全試合終了後に反映されます。",
     standingTable+`<p class="point-note">勝利数を優先し、2チームが同勝利数なら直接対決の勝者を上位にします。3チーム以上の同勝利数は、点数を記録しないため同順位とします。</p>`);
 }
@@ -111,9 +124,7 @@ document.addEventListener("click",e=>{
   const tab=e.target.closest("[data-tab],[data-menu-tab]");
   if(tab){setTab(tab.dataset.tab||tab.dataset.menuTab);return}
   const sport=e.target.closest("[data-sport]");
-  if(sport){state.sport=sport.dataset.sport;state.round="R1";render();return}
-  const round=e.target.closest("[data-round]");
-  if(round){state.round=round.dataset.round;render()}
+  if(sport){state.sport=sport.dataset.sport;render();return}
 });
 async function refresh(){
   if(document.visibilityState==="hidden")return;
