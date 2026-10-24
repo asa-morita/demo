@@ -5,7 +5,6 @@ let inFlight=null;
 let lastGood=null;
 
 const asText=(v)=>String(v??"").trim();
-const thirdChoice=(v)=>{const s=asText(v).toLowerCase();return ["1","true","yes","on","あり","有"].includes(s)?true:(["0","false","no","off","なし","無"].includes(s)?false:null)};
 const asNum=(v)=>asText(v)===""?null:(Number.isFinite(Number(v))?Number(v):null);
 function base64url(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -50,7 +49,7 @@ async function fetchSheet(env){
   const entries=(body.valueRanges||[]).map(x=>x.values||[]);
   const [teamRows=[],sportRows=[],matchRows=[]]=entries;
   const teams=teamRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0])}));
-  const sports=sportRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0]),thirdPlace:thirdChoice(r[2]),order:asNum(r[3])||0,startTime:asText(r[4]),endTime:asText(r[5]),venue:asText(r[6])}));
+  const sports=sportRows.filter(r=>asText(r[0])).map(r=>({id:asText(r[0]),name:asText(r[1])||asText(r[0]),order:asNum(r[3])||0,startTime:asText(r[4]),endTime:asText(r[5]),venue:asText(r[6])}));
   const matches=matchRows.filter(r=>asText(r[0])&&asText(r[1])).map(r=>({
     sportId:asText(r[0]),id:asText(r[1]),teamA:asText(r[2]),teamB:asText(r[3]),
     scoreA:asNum(r[4]),scoreB:asNum(r[5]),status:asText(r[6])||"未開始",
@@ -58,7 +57,7 @@ async function fetchSheet(env){
   }));
   // Podium awards are fixed by event rules; match score columns remain optional for backwards compatibility.
   const points={"1":30,"2":20,"3":10};
-  if(teams.length!==8||!sports.length)throw new Error("シート内容を確認してください（チームは8件、競技は1件以上必要）");
+  if(teams.length!==4||new Set(teams.map(t=>t.id)).size!==4||!sports.length)throw new Error("シート内容を確認してください（チームは重複なしで4件、競技は1件以上必要）");
   return {teams,sports,matches,points,source:"sheet",updatedAt:new Date().toISOString()};
 }
 function json(payload,status=200){
