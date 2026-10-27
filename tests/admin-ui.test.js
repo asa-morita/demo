@@ -11,8 +11,15 @@ const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
 const script=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8")
   .replace(/^import \{[^}]+\} from "\.\/bracket\.js";/m,
     "const {normalizeData,buildRoundRobin,buildBorrowed}=window.__bracket;");
-const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function settle(){for(let i=0;i<6;i++)await tick()}
+const tick=()=>new Promise(resolve=>setTimeout(resolve,8));
+async function settle(){for(let i=0;i<4;i++)await tick()}
+async function waitFor(check,label="状態の更新"){
+  for(let i=0;i<180;i++){
+    if(check())return;
+    await tick();
+  }
+  throw new Error(label+"が完了しませんでした");
+}
 
 async function setup(){
   let stored;
@@ -47,13 +54,11 @@ async function setup(){
     return response;
   };
   window.eval(script);
-  await settle();
-  assert.equal(window.document.querySelector("#loginPanel").hidden,false);
+  await waitFor(()=>window.document.querySelector("#loginPanel").hidden===false,"ログイン画面の表示");
   const field=window.document.querySelector("#password");
   field.value="test-browser-password";
   window.document.querySelector("#loginForm").dispatchEvent(new window.Event("submit",{bubbles:true,cancelable:true}));
-  await settle();
-  assert.equal(window.document.querySelector("#editorPanel").hidden,false);
+  await waitFor(()=>window.document.querySelector("#editorPanel").hidden===false,"管理画面の表示: "+window.document.querySelector("#message").textContent);
   return {dom,document:window.document,window,getData:()=>stored?structuredClone(stored):null,close:()=>window.close()};
 }
 function change(window,element,value){
@@ -96,8 +101,7 @@ test("borrowed race edits all four-team placements and persists from dedicated f
     change(window,input,rank);
   }
   submit(window,form);
-  await settle();
-  assert.equal(ctx.getData()?.heats[0].status,"終了");
+  await waitFor(()=>ctx.getData()?.heats[0].status==="終了","借人競争の保存");
   assert.equal(ctx.getData()?.heats[0].ranks.A,1);
   assert.match(document.querySelector("#heatProgress").textContent,/1\s*\/\s*4/);
   assert.match(document.querySelector("#borrowedStandings").textContent,/Aチーム/);
@@ -114,24 +118,20 @@ test("tug-of-war fixtures, team names, timetable and points toggle remain editab
   change(window,form.elements.namedItem("status"),"終了");
   change(window,form.elements.namedItem("winnerId"),"A");
   submit(window,form);
-  await settle();
-  assert.equal(ctx.getData()?.matches.find(m=>m.sportId==="tugofwar"&&m.id==="R1M1")?.winnerId,"A");
+  await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId==="tugofwar"&&m.id==="R1M1")?.winnerId==="A","綱引きの結果保存");
   document.querySelector('[data-admin-tab="sports"]').click();
   change(window,document.querySelector("#sportSelect"),"tugofwar");
   form=document.querySelector("#sportForm");
   change(window,form.elements.namedItem("venue"),"サブアリーナ");
   submit(window,form);
-  await settle();
-  assert.equal(ctx.getData()?.sports.find(s=>s.id==="tugofwar")?.venue,"サブアリーナ");
+  await waitFor(()=>ctx.getData()?.sports.find(s=>s.id==="tugofwar")?.venue==="サブアリーナ","競技会場の保存");
   document.querySelector('[data-admin-tab="overview"]').click();
   form=document.querySelector("#teamList form[data-team-id=A]");
   change(window,form.elements.namedItem("name"),"赤組");
   submit(window,form);
-  await settle();
-  assert.equal(ctx.getData()?.teams[0].name,"赤組");
+  await waitFor(()=>ctx.getData()?.teams[0].name==="赤組","チーム名の保存");
   document.querySelector("#togglePointsVisibility").click();
-  await settle();
-  assert.equal(ctx.getData()?.pointsVisible,false);
+  await waitFor(()=>ctx.getData()?.pointsVisible===false,"ポイントの非表示");
   assert.match(document.querySelector("#pointsVisibilityStatus").textContent,/⁇\?/);
 });
 
