@@ -1,10 +1,11 @@
-// Four-team, single round-robin format. Each team plays three games per sport.
+// Four-team head-to-head games (including tug-of-war): three rounds, each team plays three matches.
+// Borrowed-person race is different: four heats with all four teams competing each time.
 export const ROUNDS = Object.freeze([
   {id:"R1", label:"第1節"},
   {id:"R2", label:"第2節"},
   {id:"R3", label:"第3節"}
 ]);
-// Indices refer to the ordering of the four teams in the チーム sheet.
+// Indices refer to the fixed ordering of the four teams.
 export const FIXTURES = Object.freeze([
   {id:"R1M1", round:"R1", a:0, b:3},
   {id:"R1M2", round:"R1", a:1, b:2},
@@ -32,13 +33,18 @@ export function normalizeData(input) {
       status:norm(m.status)||"未開始",winnerId:norm(m.winnerId??m.winner_id),
       court:norm(m.court),scheduledAt:norm(m.scheduledAt??m.scheduled_at)
     })),
+    heats:(Array.isArray(data.heats)?data.heats:[]).map(h=>({
+      id:norm(h.id),sportId:norm(h.sportId||"borrowed"),status:norm(h.status)||"未開始",
+      ranks:Object.fromEntries(Object.entries(h.ranks||{}).map(([id,rank])=>[id,Number(rank)||0])),
+      scheduledAt:norm(h.scheduledAt)
+    })),
     points:{...PODIUM_POINTS},source:norm(data.source)||"demo",updatedAt:norm(data.updatedAt)||null
   };
 }
 
 export function buildRoundRobin(data,sportId) {
   const sport=data.sports.find(s=>s.id===sportId);
-  if(!sport)return null;
+  if(!sport||sport.id==="borrowed")return null;
   const teams=data.teams;
   const names=new Map(teams.map(t=>[t.id,t.name||t.id]));
   const rows=data.matches.filter(m=>m.sportId===sportId);
@@ -131,12 +137,57 @@ export function buildRoundRobinMatrix(league,teams) {
   }));
 }
 
+
+// Four four-team heats; sum of placing positions (lower is better).
+// No podium points are given to the sport until all four heats are valid and finished.
+export const BORROWED_HEAT_IDS=Object.freeze(["H1","H2","H3","H4"]);
+export function createBorrowedHeats(teams){
+  return BORROWED_HEAT_IDS.map(id=>({
+    id,sportId:"borrowed",status:"未開始",
+    ranks:Object.fromEntries(teams.map(t=>[t.id,0])),scheduledAt:""
+  }));
+}
+export function buildBorrowed(data){
+  const sport=data.sports.find(s=>s.id==="borrowed");
+  if(!sport)return null;
+  const teams=data.teams;
+  const records=Array.isArray(data.heats)?data.heats.filter(h=>h.sportId==="borrowed"):[];
+  const fallback=createBorrowedHeats(teams);
+  const all=BORROWED_HEAT_IDS.map((id,index)=>{
+    const found=records.filter(h=>h.id===id),record=found[0]||fallback[index];
+    const ranks=Object.fromEntries(teams.map(t=>[t.id,Number(record.ranks?.[t.id])||0]));
+    const values=Object.values(ranks);
+    const finalValid=values.length===4&&values.every(n=>Number.isInteger(n)&&n>=1&&n<=4)&&new Set(values).size===4;
+    const unranked=values.every(n=>n===0);
+    let issue="";
+    if(found.length>1)issue="同じ回の記録が重複しています";
+    else if(!["未開始","試合中","終了"].includes(record.status))issue="状態が不正です";
+    else if(record.status==="終了"&&!finalValid)issue="終了した回には4チームの異なる順位が必要です";
+    else if(record.status!=="終了"&&!unranked)issue="未終了の回には順位を付けられません";
+    return {id,label:"第"+(index+1)+"回",status:issue?"要確認":record.status,
+      ranks,scheduledAt:record.scheduledAt||"",issue,finished:!issue&&record.status==="終了"};
+  });
+  const completedHeats=all.filter(h=>h.finished).length;
+  const standings=teams.map(team=>{
+    const total=all.reduce((sum,h)=>sum+(h.finished?h.ranks[team.id]:0),0);
+    return {id:team.id,name:team.name||team.id,rankSum:total,played:completedHeats,rank:null};
+  }).sort((a,b)=>a.rankSum-b.rankSum||a.name.localeCompare(b.name,"ja"));
+  if(completedHeats){
+    standings.forEach((team,index)=>{
+      team.rank=index>0&&standings[index-1].rankSum===team.rankSum?standings[index-1].rank:index+1;
+    });
+  }
+  const completed=teams.length===4&&new Set(teams.map(t=>t.id)).size===4&&completedHeats===4;
+  return {sport,all,standings,completed,completedHeats,
+    ranks:completed?standings.map(t=>({teamId:t.id,rank:t.rank})):[]};
+}
+
 export function computeOverall(data) {
   const table=new Map(data.teams.map(t=>[t.id,{id:t.id,name:t.name,points:0,first:0,second:0,third:0,participations:0}]));
   let completedSports=0;
   const sportsSummary=[];
   for(const sport of data.sports){
-    const league=buildRoundRobin(data,sport.id);
+    const league=sport.id==="borrowed"?buildBorrowed(data):buildRoundRobin(data,sport.id);
     sportsSummary.push({name:sport.name,completed:league.completed});
     if(!league.completed)continue;
     completedSports++;
