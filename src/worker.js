@@ -52,6 +52,7 @@ export default {
       return handleAdminApi(request,env,{
         getData:()=>storeCall(env,"data"),
         saveMatch:(_env,input)=>storeCall(env,"match",input),
+        saveHeat:(_env,input)=>storeCall(env,"heat",input),
         saveTeam:(_env,input)=>storeCall(env,"team",input),
         saveSport:(_env,input)=>storeCall(env,"sport",input)
       });

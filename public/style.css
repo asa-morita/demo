@@ -104,3 +104,12 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
   .matrix-result__main{font-size:10px}
   .matrix-result__round{font-size:8px}
 }
+
+/* Four simultaneous teams are shown as placements, not a head-to-head matrix. */
+.borrowed-heats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.borrowed-heat{min-width:0;padding:15px;border:1px solid var(--line);border-radius:13px;background:#fafafa}
+.borrowed-places{margin-top:11px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.borrowed-place{padding:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12px}
+.borrowed-place strong{overflow-wrap:anywhere}
+.borrowed-place span{font-weight:850;white-space:nowrap}
+@media(max-width:680px){.borrowed-heats{grid-template-columns:1fr}}

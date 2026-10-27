@@ -1,4 +1,4 @@
-import {FIXTURES,PODIUM_POINTS} from "../public/bracket.js";
+import {FIXTURES,PODIUM_POINTS,BORROWED_HEAT_IDS,createBorrowedHeats} from "../public/bracket.js";
 
 const clean=(value)=>String(value??"").trim();
 const error=(message,conflict=false)=>{
@@ -20,14 +20,20 @@ export function createDefaultData(){
   const sports=sportsSeed.map(([id,name],index)=>({
     id,name,order:index+1,startTime:"",endTime:"",venue:""
   }));
-  const matches=sports.flatMap(sport=>FIXTURES.map(fixture=>({
+  const matches=sports.filter(sport=>sport.id!=="borrowed").flatMap(sport=>FIXTURES.map(fixture=>({
     sportId:sport.id,id:fixture.id,
     teamA:teams[fixture.a].id,teamB:teams[fixture.b].id,
     scoreA:null,scoreB:null,status:"未開始",winnerId:"",court:"",scheduledAt:""
   })));
-  return {teams,sports,matches,points:{...PODIUM_POINTS},source:"admin",updatedAt:""};
+  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},source:"admin",updatedAt:""};
 }
 
+// Old Durable Object records have borrowed-race head-to-head rows instead of heats.
+// Add the new field without overwriting any existing team, sport, or match edits.
+export function ensureHeats(data){
+  if(Array.isArray(data.heats))return data;
+  return {...data,heats:createBorrowedHeats(data.teams)};
+}
 function requiredString(value,label,max){
   if(typeof value!=="string"||!value.trim()||value.trim().length>max)
     throw error(label+"は1〜"+max+"文字で入力してください");
@@ -50,6 +56,7 @@ export function validateMatchUpdate(input,data){
   if(!input||typeof input!=="object")throw error("試合データが不正です");
   const sportId=clean(input.sportId),matchId=clean(input.matchId);
   findSport(data,sportId);
+  if(sportId==="borrowed")throw error("借人競争は4回制の順位入力画面を使用してください");
   const fixture=FIXTURES.find(f=>f.id===matchId);
   if(!fixture||data.teams.length!==4)throw error("対戦カードが不正です");
   const matches=data.matches.filter(m=>m.sportId===sportId&&m.id===matchId);
@@ -69,6 +76,37 @@ export function validateMatchUpdate(input,data){
   assertExpected(match.court,clean(input.expectedCourt));
   assertExpected(match.scheduledAt,clean(input.expectedScheduledAt));
   return {match,status,winnerId,court,scheduledAt,sportId,matchId};
+}
+
+export function validateHeatUpdate(input,data){
+  if(!input||typeof input!=="object")throw error("回別順位の入力が不正です");
+  const heatId=clean(input.heatId);
+  if(!BORROWED_HEAT_IDS.includes(heatId))throw error("回の番号が不正です");
+  const heats=ensureHeats(data).heats.filter(h=>h.id===heatId&&h.sportId==="borrowed");
+  if(heats.length!==1)throw error("回別順位の記録が存在しない、または重複しています");
+  const heat=heats[0],status=clean(input.status);
+  if(!["未開始","試合中","終了"].includes(status))throw error("試合状態が不正です");
+  if(data.teams.length!==4||new Set(data.teams.map(t=>t.id)).size!==4)
+    throw error("4チームのデータが不正です");
+  if(!input.ranks||typeof input.ranks!=="object"||Array.isArray(input.ranks))
+    throw error("順位データが不正です");
+  const ids=data.teams.map(t=>t.id);
+  if(Object.keys(input.ranks).length!==4||ids.some(id=>!Object.hasOwn(input.ranks,id)))
+    throw error("4チーム全員の順位を入力してください");
+  const ranks=Object.fromEntries(ids.map(id=>[id,input.ranks[id]]));
+  const values=Object.values(ranks);
+  if(status==="終了"){
+    if(!values.every(n=>Number.isInteger(n)&&n>=1&&n<=4)||new Set(values).size!==4)
+      throw error("終了した回は4チームの順位を1〜4位で重複なく登録してください");
+  }else if(!values.every(n=>n===0)){
+    throw error("未開始・試合中では順位を空欄にしてください");
+  }
+  const scheduledAt=optionalString(input.scheduledAt??"","開始予定",80);
+  assertExpected(heat.status,clean(input.expectedStatus));
+  assertExpected(heat.scheduledAt,clean(input.expectedScheduledAt));
+  if(!input.expectedRanks||typeof input.expectedRanks!=="object")throw error("変更前の順位が不正です");
+  for(const id of ids)assertExpected(heat.ranks?.[id]??0,input.expectedRanks[id]);
+  return {heat,status,ranks,scheduledAt,heatId};
 }
 export function validateTeamUpdate(input,data){
   if(!input||typeof input!=="object")throw error("チームデータが不正です");
@@ -99,6 +137,11 @@ export function validateSportUpdate(input,data){
   return {sport,name,order:input.order,startTime,endTime,venue};
 }
 export function applyUpdate(data,kind,input){
+  if(kind==="heat"){
+    const u=validateHeatUpdate(input,data);
+    Object.assign(u.heat,{status:u.status,ranks:u.ranks,scheduledAt:u.scheduledAt});
+    return {heatId:u.heatId,status:u.status,ranks:u.ranks};
+  }
   if(kind==="match"){
     const u=validateMatchUpdate(input,data);
     Object.assign(u.match,{status:u.status,winnerId:u.winnerId,court:u.court,scheduledAt:u.scheduledAt});
@@ -125,14 +168,14 @@ export class TournamentStore {
       status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}
     });
     if(request.method==="GET"&&path==="/data"){
-      try{return respond(await this.ctx.storage.get("tournament")||createDefaultData())}
+      try{return respond(ensureHeats(await this.ctx.storage.get("tournament")||createDefaultData()))}
       catch(e){console.error("Tournament read error",e);return respond({error:"保存データを取得できません"},503)}
     }
-    if(request.method==="POST"&&["/match","/team","/sport"].includes(path)){
+    if(request.method==="POST"&&["/match","/team","/sport","/heat"].includes(path)){
       try{
         const input=await request.json();
         const result=await this.ctx.storage.transaction(async tx=>{
-          const data=await tx.get("tournament")||createDefaultData();
+          const data=ensureHeats(await tx.get("tournament")||createDefaultData());
           const updated=applyUpdate(data,path.slice(1),input);
           data.updatedAt=new Date().toISOString();
           await tx.put("tournament",data);

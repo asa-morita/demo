@@ -1,4 +1,4 @@
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,computeOverall} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
 const state={tab:"schedule",sport:"",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -14,15 +14,19 @@ function renderSchedule(data) {
     const start=validClock(s.startTime)?s.startTime:"";
     const end=validClock(s.endTime)?s.endTime:"";
     const time=start&&end?`${start}〜${end}`:start?`${start}〜未定`:"時刻未定";
-    const league=buildRoundRobin(data,s.id);
-    const done=league.all.filter(m=>m.status==="終了").length;
+    const league=s.id==="borrowed"?buildBorrowed(data):buildRoundRobin(data,s.id);
+    const done=s.id==="borrowed"?league.completedHeats:league.all.filter(m=>m.status==="終了").length;
+    const description=s.id==="borrowed"?"4チームで計4回（終了"+done+"/4回）":
+      s.id==="tugofwar"?"2チーム対抗・3節総当たり（終了"+done+"/6試合）":
+      "4チーム・総当たり6試合（終了"+done+"/6試合）";
     return `<li class="schedule-item">
       <div class="schedule-item__time ${start?"":"pending"}">${esc(time)}</div>
       <div><div class="schedule-item__name"><span class="schedule-item__order">${index+1}</span>${sportsName(s)}</div>
-      <div class="schedule-item__place">${s.venue?`会場：${esc(s.venue)} ／ `:""}4チーム・総当たり6試合（終了${done}試合）</div></div>
+      <div class="schedule-item__place">${s.venue?`会場：${esc(s.venue)} ／ `:""}${esc(description)}</div></div>
     </li>`;
   }).join("");
-  const league=buildRoundRobin(data,data.sports[0]?.id);
+  const firstHeadToHead=data.sports.find(s=>s.id!=="borrowed");
+  const league=firstHeadToHead?buildRoundRobin(data,firstHeadToHead.id):null;
   const fixtureRows=league?league.rounds.map(round=>
     `<div class="results-group"><h3>${round.label}</h3><div class="results-list">${round.matches.map(m=>
     `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`).join(""):"";
@@ -38,11 +42,39 @@ function renderSchedule(data) {
     <div class="section-row"><h2>実施競技</h2><span class="minor">全${data.sports.length}競技</span></div>
     <ol class="schedule-list" style="margin-top:14px">${rows}</ol>
     <p class="schedule-caveat">${esc(notice)}</p>`)+
-    section("4チームの総当たり組み合わせ",
-      `参加チーム：${names} ／ 各競技で共通の組み合わせ（3節・6試合）`,
-      fixtureRows+`<p class="point-note">試合ごとの開始時刻・会場は「対戦表」で確認できます。実施競技ごとの順序・時刻は運営の記録を優先します。</p>`);
+    section("2チーム対抗競技の総当たり組み合わせ",
+      `参加チーム：${names} ／ 3節で各チーム3戦・全6試合（綱引きを含む）`,
+      fixtureRows+`<p class="point-note">借人競争はこの組み合わせを使わず、4チームで4回競います。各回の順位は「対戦表」から確認できます。試合ごとの開始時刻・会場は運営の記録を優先します。</p>`);
+}
+function renderBorrowed(data){
+  const race=buildBorrowed(data);
+  if(!race)return section("借人競争",null,'<div class="empty">競技情報がありません。</div>');
+  const teamNames=new Map(data.teams.map(t=>[t.id,t.name]));
+  const heats=race.all.map(heat=>{
+    const cells=data.teams.map(team=>{
+      const rank=heat.finished?heat.ranks[team.id]:null;
+      return '<div class="borrowed-place"><strong>'+esc(team.name)+'</strong>'+
+        '<span>'+(rank?rank+'位':'–')+'</span></div>';
+    }).join("");
+    return '<div class="borrowed-heat"><div class="match-heading"><strong>'+esc(heat.label)+'</strong>'+
+      '<span class="match-state">'+esc(heat.status)+'</span></div>'+
+      (heat.scheduledAt?'<p class="muted">開始予定：'+esc(heat.scheduledAt)+'</p>':'')+
+      (heat.issue?'<p class="problem-text">'+esc(heat.issue)+'</p>':'')+
+      '<div class="borrowed-places">'+cells+'</div></div>';
+  }).join("");
+  const rows=race.standings.map(t=>'<tr class="'+(race.completed&&t.rank===1?'leader':'')+'">'+
+    '<td><span class="rank-symbol">'+(t.rank??'–')+'</span></td><td>'+esc(t.name)+'</td>'+
+    '<td class="num">'+(t.played?t.rankSum:'–')+'</td><td class="num">'+t.played+'/4</td></tr>').join("");
+  const summary='<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>順位合計</th><th>実施</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  return section("借人競争 ・ 4回戦",
+    '4チームが毎回参加。終了 '+race.completedHeats+'/4回',
+    '<div class="borrowed-heats">'+heats+'</div>')+
+    section("借人競争の総合結果",
+      race.completed?'全4回の順位が確定しました。':'実施済みの回だけを集計した暫定順位です。',
+      summary+'<p class="point-note">各回の順位（1〜4位）を合計し、数字が小さいチームを上位とします。合計が同じなら同順位です。4回すべて終了すると、競技別順位に応じて総合ポイントが加算されます。</p>');
 }
 function renderBracket(data){
+  if(state.sport==="borrowed")return renderBorrowed(data);
   const league=buildRoundRobin(data,state.sport);
   if(!league)return section("対戦表",null,`<div class="empty">競技を選択してください。</div>`);
   const cells=buildRoundRobinMatrix(league,data.teams);
@@ -90,7 +122,7 @@ function renderStandings(data){
      <td><span class="rank-symbol">${r.rank??"–"}</span></td><td>${esc(r.name)}</td><td class="num">${r.points}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
   </tr>`).join("");
   const listing=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>合計pt</th><th>優勝</th><th>準優勝</th><th>3位</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  const note=`<p class="point-note">全6試合の結果が確定した競技のみ加点します。各競技は勝利数順、2チーム同数なら直接対決、3チーム以上の同数は同順位（配点も同額）です。総合順位の同点は優勝・準優勝・3位の回数で比較し、なお同数なら同順位とします。配点は1位30点、2位20点、3位10点で固定です。</p>`;
+  const note=`<p class="point-note">対抗形式の競技は全6試合が確定すると加点します。借人競争は全4回の順位を合算し、順位合計が小さいチームを上位として4回すべて終了後に加点します。同順位は同額加点です。総合順位の同点は優勝・準優勝・3位の回数で比較し、なお同数なら同順位とします。配点は1位30点、2位20点、3位10点で固定です。</p>`;
   const points=Object.entries(data.points).sort((a,b)=>Number(a[0])-Number(b[0])).map(([rank,score])=>`${rank}位 ${score}pt`).join(" ／ ");
   return section("総合順位",`確定：${overall.completedSports}/${overall.totalSports}競技　／　未確定：${inProgress}競技`,
     listing+note)+section("ポイント配点","競技別の結果を総合得点に換算します。",
@@ -99,7 +131,7 @@ function renderStandings(data){
 }
 
 function render(){
-  const titles={schedule:["予定","12:30〜18:00の開催予定と4チームの総当たり組み合わせです。"],standings:["総合順位","4チームの競技別ポイントを集計します。"],bracket:["対戦表","4チーム総当たりの試合・勝敗・順位を確認できます。"]};
+  const titles={schedule:["予定","12:30〜18:00の開催予定と競技ごとの予定です。"],standings:["総合順位","4チームの競技別ポイントを集計します。"],bracket:["対戦表","対抗競技の勝敗と借人競争4回の順位を確認できます。"]};
   $("pageHeading").textContent=titles[state.tab][0];$("pageDescription").textContent=titles[state.tab][1];
   document.querySelectorAll("[data-tab]").forEach(b=>{const active=b.dataset.tab===state.tab;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   if(!state.data)return;

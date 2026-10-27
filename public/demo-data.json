@@ -427,78 +427,6 @@
       "winnerId": "",
       "court": "",
       "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R1M1",
-      "teamA": "A",
-      "teamB": "D",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R1M2",
-      "teamA": "B",
-      "teamB": "C",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R2M1",
-      "teamA": "A",
-      "teamB": "C",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R2M2",
-      "teamA": "D",
-      "teamB": "B",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R3M1",
-      "teamA": "A",
-      "teamB": "B",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "R3M2",
-      "teamA": "C",
-      "teamB": "D",
-      "scoreA": null,
-      "scoreB": null,
-      "status": "未開始",
-      "winnerId": "",
-      "court": "",
-      "scheduledAt": ""
     }
   ],
   "points": {
@@ -507,5 +435,55 @@
     "3": 10
   },
   "source": "demo",
-  "updatedAt": ""
+  "updatedAt": "",
+  "heats": [
+    {
+      "sportId": "borrowed",
+      "id": "H1",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H2",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H3",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H4",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    }
+  ]
 }

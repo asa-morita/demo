@@ -1,19 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
 const match=(d,sport,id)=>d.matches.find(m=>m.sportId===sport&&m.id===id);
 
-test("demo contains four teams and six sports with 6 unique pairings each",()=>{
+test("five sports including tug-of-war use 3 rounds with two matches; borrowed race uses four heats",()=>{
   const d=fresh();
   assert.deepEqual(d.teams.map(t=>t.id),["A","B","C","D"]);
   assert.equal(d.sports.length,6);
   assert.deepEqual(d.sports.map(x=>x.name),["フットサル","バレーボール","バスケットボール","ドッチボール","綱引き","借人競争"]);
   assert.equal(FIXTURES.length,6);
-  for(const s of d.sports){
+  for(const s of d.sports.filter(s=>s.id!=="borrowed")){
     const league=buildRoundRobin(d,s.id);
     assert.equal(league.rounds.length,3);
     assert.deepEqual(league.rounds.map(r=>r.matches.length),[2,2,2]);
@@ -21,6 +21,9 @@ test("demo contains four teams and six sports with 6 unique pairings each",()=>{
     assert.equal(new Set(pairs).size,6);
     for(const t of d.teams)assert.equal(league.all.filter(m=>m.teamA===t.id||m.teamB===t.id).length,3);
   }
+  assert.equal(buildRoundRobin(d,"borrowed"),null);
+  assert.equal(buildBorrowed(d).all.length,4);
+  assert.equal(d.heats.length,4);
 });
 test("a completed round robin ranks teams by wins and awards podium points",()=>{
   const d=fresh(),league=buildRoundRobin(d,"volleyball");
@@ -120,7 +123,7 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.deepEqual([...html.matchAll(/data-menu-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
   assert.match(html,/総合順位/);
   assert.doesNotMatch(html,/data-tab="news"|data-tab="results"/);
-  assert.match(app,/4チームの総当たり組み合わせ/);
+  assert.match(app,/2チーム対抗競技の総当たり組み合わせ/);
   assert.match(app,/const titles=\{schedule:\["予定"/);
   assert.doesNotMatch(app,/renderNews|renderResults/);
 });
@@ -169,4 +172,48 @@ test("match view markup uses a real five-by-five results table without bracket c
   assert.doesNotMatch(app,/bracket-desktop|bracket-mobile|matchCard\(/);
   assert.match(css,/\.round-robin-table/);
   assert.match(css,/linear-gradient\(135deg/);
+});
+
+test("borrowed race awards no podium points until all four 4-team heats complete",()=>{
+  const d=fresh();
+  const orders=[
+    {A:1,B:2,C:3,D:4},
+    {A:1,B:3,C:2,D:4},
+    {A:2,B:1,C:4,D:3},
+    {A:1,B:2,C:3,D:4}
+  ];
+  for(let index=0;index<4;index++){
+    const heat=d.heats[index];heat.ranks=orders[index];heat.status="終了";
+    const race=buildBorrowed(d);
+    assert.equal(race.completedHeats,index+1);
+    if(index<3){
+      assert.equal(race.completed,false);
+      assert.equal(computeOverall(d).completedSports,1); // Volleyball only.
+    }
+  }
+  const race=buildBorrowed(d);
+  assert.equal(race.completed,true);
+  assert.deepEqual(race.standings.map(x=>[x.id,x.rankSum,x.rank]),[
+    ["A",5,1],["B",8,2],["C",12,3],["D",15,4]
+  ]);
+  const overall=computeOverall(d);
+  assert.equal(overall.completedSports,2);
+  assert.deepEqual(Object.fromEntries(overall.rows.map(t=>[t.id,t.points])),{A:50,B:20,C:40,D:10});
+});
+test("borrowed race shares tied rank and rejects inconsistent finished heats",()=>{
+  const d=fresh();
+  const orders=[
+    {A:1,B:2,C:3,D:4},
+    {A:2,B:1,C:4,D:3},
+    {A:1,B:2,C:3,D:4},
+    {A:2,B:1,C:4,D:3}
+  ];
+  d.heats.forEach((h,i)=>{h.status="終了";h.ranks=orders[i]});
+  const race=buildBorrowed(d);
+  assert.deepEqual(race.standings.map(t=>[t.id,t.rank]),[["A",1],["B",1],["C",3],["D",3]]);
+  d.heats[3].ranks.D=1;
+  const invalid=buildBorrowed(d);
+  assert.equal(invalid.completed,false);
+  assert.equal(invalid.all[3].status,"要確認");
+  assert.equal(computeOverall(d).completedSports,1);
 });
