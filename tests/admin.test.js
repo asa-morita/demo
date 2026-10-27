@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
 import {createSession,verifySession,handleAdminApi} from "../src/admin.js";
 import {createDefaultData,ensureHeats,applyUpdate,TournamentStore} from "../src/store.js";
 import worker from "../src/worker.js";
@@ -261,4 +262,49 @@ test("admin page includes visibility control and public script masks total-point
   assert.match(admin,/id="pointsVisibilityStatus"/);
   assert.match(adminJs,/api\("settings","POST"/);
   assert.match(app,/formatOverallPoints\(r\.points,data\.pointsVisible\)/);
+});
+
+test("admin frontend JavaScript passes Node module syntax checking",()=>{
+  execFileSync(process.execPath,["--check",new URL("../public/admin.js",import.meta.url).pathname]);
+});
+test("admin panel has four accessible tabs with separately controlled sections",()=>{
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const tabs=[...html.matchAll(/data-admin-tab="([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(tabs,["overview","sports","matches","borrowed"]);
+  assert.match(html,/role="tablist"/);
+  for(const name of tabs){
+    assert.match(html,new RegExp('id="tab-'+name+'".*aria-controls="panel-'+name+'"'));
+    assert.match(html,new RegExp('id="panel-'+name+'"[^>]*role="tabpanel"'));
+    assert.match(html,new RegExp('aria-labelledby="tab-'+name+'"'));
+  }
+  assert.match(html,/id="matchSportSelect"/);
+  assert.match(html,/id="sportSelect"/);
+  assert.match(html,/id="heatList"/);
+  assert.match(html,/id="borrowedStandings"/);
+  assert.match(html,/id="matchProgress"/);
+  assert.match(html,/id="onlyUnfinished"/);
+  assert.match(html,/id="togglePointsVisibility"/);
+});
+test("admin uses independent 2-team match and 4-heat editors with progress",()=>{
+  const source=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  assert.match(source,/buildRoundRobin\(data,matchSportId\)/);
+  assert.match(source,/data\.sports\.filter\(s=>s\.id!=="borrowed"\)/);
+  assert.match(source,/buildBorrowed\(data\)/);
+  assert.match(source,/\$\("heatList"\)\.addEventListener\("submit"/);
+  assert.match(source,/\$\("matchList"\)\.addEventListener\("submit"/);
+  assert.match(source,/\$\("matchSportSelect"\)\.addEventListener\("change"/);
+  assert.match(source,/\$\("onlyUnfinished"\)\.addEventListener\("change"/);
+  assert.match(source,/sportId:matchSportId,matchId:row\.id/);
+  assert.match(source,/api\("settings","POST"/);
+});
+test("navigation warns about unsaved edits and preserves drafts when saving another form",()=>{
+  const source=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  assert.match(source,/function canDiscardEdits\(/);
+  assert.match(source,/function captureDrafts\(/);
+  assert.match(source,/function restoreDrafts\(/);
+  assert.match(source,/await loadData\(\{preserveDrafts:true,excludeForm:form\}\)/);
+  assert.match(source,/window\.addEventListener\("beforeunload"/);
+  const css=readFileSync(new URL("../public/admin.css",import.meta.url),"utf8");
+  assert.match(css,/\.admin-tabs\{display:grid/);
+  assert.match(css,/\.is-dirty/);
 });
