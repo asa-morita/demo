@@ -1,5 +1,3 @@
-import {FIXTURES} from "../public/bracket.js";
-
 const SESSION_COOKIE="festival_admin_session";
 const SESSION_SECONDS=8*60*60;
 const text=(v)=>String(v??"").trim();
@@ -17,7 +15,7 @@ const bytesEqual=(a,b)=>{
 const b64=(bytes)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const unb64=(s)=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0));
 const authConfigured=(env)=>Boolean(env.ADMIN_PASSWORD&&env.ADMIN_SESSION_SECRET);
-const sheetConfigured=(env)=>Boolean(env.SHEETS_SPREADSHEET_ID&&env.SHEETS_CLIENT_EMAIL&&env.SHEETS_PRIVATE_KEY);
+const storageConfigured=(env)=>Boolean(env.TOURNAMENT_STORE);
 
 async function hmac(data,secret){
   const key=await crypto.subtle.importKey("raw",encoder.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
@@ -80,43 +78,11 @@ function recordFailure(request){
   if(failures.size>500)failures.delete(failures.keys().next().value);
 }
 
-/**
- * Validate an update against live sheet rows. Row indices are 1-based.
- * The client must send its previously observed status and winner, so most
- * concurrent edits fail as conflicts instead of overwriting silently.
- */
-export function validateMatchUpdate(input,data,sheetRows){
-  if(!input||typeof input!=="object")throw new Error("試合データが不正です");
-  const sportId=text(input.sportId),matchId=text(input.matchId);
-  const status=text(input.status),winnerId=text(input.winnerId);
-  const expectedStatus=text(input.expectedStatus)||"未開始";
-  const expectedWinnerId=text(input.expectedWinnerId);
-  if(!data.sports.some(s=>s.id===sportId))throw new Error("競技が見つかりません");
-  const fixture=FIXTURES.find(m=>m.id===matchId);
-  if(!fixture||data.teams.length!==4)throw new Error("対戦カードが不正です");
-  const teamA=data.teams[fixture.a].id,teamB=data.teams[fixture.b].id;
-  if(!["未開始","試合中","終了"].includes(status))throw new Error("試合状態が不正です");
-  if(status==="終了"&&![teamA,teamB].includes(winnerId))throw new Error("終了した試合の勝者を選択してください");
-  if(status!=="終了"&&winnerId)throw new Error("未開始・試合中の勝者は空欄にしてください");
-  const matches=sheetRows.map((row,index)=>({row,index:index+2}))
-    .filter(item=>text(item.row[0])===sportId&&text(item.row[1]).toUpperCase()===matchId);
-  if(matches.length!==1)throw new Error("試合シート内の対象行が存在しない、または重複しています");
-  const {row,index}=matches[0];
-  if(text(row[2])!==teamA||text(row[3])!==teamB)throw new Error("チームの組み合わせがシートと一致しません");
-  const currentStatus=text(row[6])||"未開始",currentWinnerId=text(row[7]);
-  if(currentStatus!==expectedStatus||currentWinnerId!==expectedWinnerId){
-    const conflict=new Error("他の端末で結果が変更されています。再読込してから入力してください");
-    conflict.conflict=true;
-    throw conflict;
-  }
-  return {rowIndex:index,status,winnerId,teamA,teamB};
-}
-
 export async function handleAdminApi(request,env,handlers){
   const pathname=new URL(request.url).pathname;
   const method=request.method;
   if(pathname==="/api/admin/session"&&method==="GET"){
-    return json({authenticated:await authorized(request,env),configured:authConfigured(env),sheetReady:sheetConfigured(env)});
+    return json({authenticated:await authorized(request,env),configured:authConfigured(env),storageReady:storageConfigured(env)});
   }
   if(!pathname.startsWith("/api/admin/"))return json({error:"Not found"},404);
   if(!["GET","POST"].includes(method))return json({error:"Method not allowed"},405);
@@ -137,23 +103,24 @@ export async function handleAdminApi(request,env,handlers){
     return json({authenticated:false},200,{"Set-Cookie":setCookie("",request,0)});
   }
   if(!await authorized(request,env))return json({error:"管理者ログインが必要です"},401);
-  if(!sheetConfigured(env))return json({error:"Google Sheetsの書き込み設定が不足しています"},503);
+  if(!storageConfigured(env))return json({error:"Cloudflare Durable Objectの設定が不足しています"},503);
   if(pathname==="/api/admin/data"&&method==="GET"){
     try{return json(await handlers.getData(env))}catch(e){
       console.error("Admin data error:",String(e));
-      return json({error:"スプレッドシートの読込に失敗しました。共有設定を確認してください"},502)
+      return json({error:"保存データの読込に失敗しました"},503)
     }
   }
-  if(pathname==="/api/admin/match"&&method==="POST"){
+  if(["/api/admin/match","/api/admin/team","/api/admin/sport"].includes(pathname)&&method==="POST"){
     let input;try{input=await readJson(request)}catch(e){return json({error:e.message},400)}
     try{
-      const result=await handlers.saveMatch(env,input,request);
+      const handler={"/api/admin/match":handlers.saveMatch,"/api/admin/team":handlers.saveTeam,"/api/admin/sport":handlers.saveSport}[pathname];
+      const result=await handler(env,input);
       return json({ok:true,...result});
     }catch(e){
       if(e.conflict)return json({error:e.message},409);
       if(e.validation)return json({error:e.message},400);
       console.error("Admin save error:",String(e));
-      return json({error:"保存できませんでした。設定・通信・シートの編集権限を確認してください"},502);
+      return json({error:"保存できませんでした。ストレージの接続を確認してください"},503);
     }
   }
   return json({error:"Not found"},404);

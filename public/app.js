@@ -28,7 +28,7 @@ function renderSchedule(data) {
     `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`).join(""):"";
   const names=data.teams.map(t=>esc(t.name)).join(" ／ ");
   const allTimed=data.sports.length>0&&data.sports.every(s=>validClock(s.startTime)&&validClock(s.endTime));
-  const notice=allTimed?"時間は運営のスプレッドシートから取得しています。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営のスプレッドシートから自動反映されます。";
+  const notice=allTimed?"時間は運営が管理画面から登録した内容です。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営の管理画面から登録されます。";
   return section("開催予定","体育祭の全体開催時間です。",
     `<div class="schedule-range">
       <div><div class="schedule-range__time">12:30</div><div class="schedule-range__caption">開始</div></div>
@@ -138,7 +138,7 @@ async function refresh(){
     state.data=next;
     if(!next.sports.some(s=>s.id===state.sport))state.sport=next.sports[0].id;
     state.lastFetch=new Date();state.problem="";
-    $("alert").hidden=!payload.stale; if(payload.stale)$("alert").textContent="Googleから最新データを取得できず、前回の情報を表示しています。";
+    $("alert").hidden=!payload.stale; if(payload.stale)$("alert").textContent="最新データを取得できず、前回の情報を表示しています。";
     $("connection").dataset.state=payload.stale?"error":"ok";$("connectionLabel").textContent=payload.stale?"前回取得したデータを表示中":"最新データを取得しました";
     $("updatedAt").textContent=(payload.stale?"最終正常取得 ":"取得 ")+displayTime(payload.stale?(payload.updatedAt||state.lastFetch.toISOString()):state.lastFetch.toISOString());
     $("topLive").classList.toggle("offline",!!payload.stale);$("topLive").textContent=payload.stale?"STALE":"LIVE";
