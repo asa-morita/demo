@@ -285,7 +285,7 @@ $("editorPanel").addEventListener("input",markDirty);
 $("editorPanel").addEventListener("change",markDirty);
 document.querySelectorAll("[data-admin-tab]").forEach(button=>{
   button.addEventListener("click",()=>{
-    if(selectTab(button.dataset.adminTab))button.focus();
+    if(selectTab(button.dataset.adminTab))button.focus({preventScroll:true});
   });
   button.addEventListener("keydown",event=>{
     const keys=["ArrowLeft","ArrowRight","Home","End"];
@@ -295,7 +295,7 @@ document.querySelectorAll("[data-admin-tab]").forEach(button=>{
     const index=tabs.indexOf(button);
     const destination=event.key==="Home"?tabs[0]:event.key==="End"?tabs[tabs.length-1]:
       tabs[(index+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length];
-    if(selectTab(destination.dataset.adminTab))destination.focus();
+    if(selectTab(destination.dataset.adminTab))destination.focus({preventScroll:true});
   });
 });
 $("sportSelect").addEventListener("change",event=>{
