@@ -305,9 +305,9 @@ test("navigation warns about unsaved edits and preserves drafts when saving anot
   assert.match(source,/await loadData\(\{preserveDrafts:true,excludeForm:form\}\)/);
   assert.match(source,/window\.addEventListener\("beforeunload"/);
   const css=readFileSync(new URL("../public/admin.css",import.meta.url),"utf8");
-  assert.match(css,/\\.admin-bottom-nav\\{position:fixed/);
+  assert.ok(css.includes(".admin-bottom-nav{position:fixed"));
   assert.ok(css.includes("padding-bottom:env(safe-area-inset-bottom"));
-  assert.doesNotMatch(css,/\\.admin-tabs\\{display:grid/);
+  assert.ok(!css.includes(".admin-tabs{display:grid"));
   assert.match(css,/\.is-dirty/);
 });
 
