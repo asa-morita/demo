@@ -38,7 +38,8 @@ export function normalizeData(input) {
       ranks:Object.fromEntries(Object.entries(h.ranks||{}).map(([id,rank])=>[id,Number(rank)||0])),
       scheduledAt:norm(h.scheduledAt)
     })),
-    points:{...PODIUM_POINTS},source:norm(data.source)||"demo",updatedAt:norm(data.updatedAt)||null
+    points:{...PODIUM_POINTS},pointsVisible:data.pointsVisible!==false,
+    source:norm(data.source)||"demo",updatedAt:norm(data.updatedAt)||null
   };
 }
 
@@ -180,6 +181,11 @@ export function buildBorrowed(data){
   const completed=teams.length===4&&new Set(teams.map(t=>t.id)).size===4&&completedHeats===4;
   return {sport,all,standings,completed,completedHeats,
     ranks:completed?standings.map(t=>({teamId:t.id,rank:t.rank})):[]};
+}
+
+// This masks only the spectator display; rankings still use actual totals.
+export function formatOverallPoints(points,visible=true){
+  return visible?String(points):"⁇?";
 }
 
 export function computeOverall(data) {
