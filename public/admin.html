@@ -44,20 +44,7 @@
           <button type="button" id="logoutButton">ログアウト</button>
         </div>
       </div>
-      <nav class="admin-tabs" role="tablist" aria-label="管理画面の編集対象">
-        <button type="button" role="tab" id="tab-overview" data-admin-tab="overview" aria-selected="false" aria-controls="panel-overview" tabindex="-1">
-          <span class="tab-icon" aria-hidden="true">⚙</span>全体設定
-        </button>
-        <button type="button" role="tab" id="tab-sports" data-admin-tab="sports" aria-selected="false" aria-controls="panel-sports" tabindex="-1">
-          <span class="tab-icon" aria-hidden="true">▦</span>競技・日程
-        </button>
-        <button type="button" role="tab" id="tab-matches" data-admin-tab="matches" aria-selected="true" aria-controls="panel-matches" tabindex="0">
-          <span class="tab-icon" aria-hidden="true">⚑</span>対抗戦結果
-        </button>
-        <button type="button" role="tab" id="tab-borrowed" data-admin-tab="borrowed" aria-selected="false" aria-controls="panel-borrowed" tabindex="-1">
-          <span class="tab-icon" aria-hidden="true">♟</span>借人競争
-        </button>
-      </nav>
+
 
       <section id="panel-overview" class="tab-panel" role="tabpanel" aria-labelledby="tab-overview" hidden>
         <div class="tab-intro">
@@ -129,6 +116,20 @@
         </div>
         <div id="heatList" class="match-list"></div>
       </section>
+      <nav class="admin-bottom-nav" aria-label="管理画面のフッターナビゲーション" role="tablist" aria-label="管理画面の編集対象">
+        <button type="button" role="tab" id="tab-overview" data-admin-tab="overview" aria-selected="false" aria-controls="panel-overview" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">⚙</span><span class="tab-label">全体設定</span>
+        </button>
+        <button type="button" role="tab" id="tab-sports" data-admin-tab="sports" aria-selected="false" aria-controls="panel-sports" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">▦</span><span class="tab-label">競技・日程</span>
+        </button>
+        <button type="button" role="tab" id="tab-matches" data-admin-tab="matches" aria-selected="true" aria-controls="panel-matches" tabindex="0">
+          <span class="tab-icon" aria-hidden="true">⚑</span><span class="tab-label">対抗戦結果</span>
+        </button>
+        <button type="button" role="tab" id="tab-borrowed" data-admin-tab="borrowed" aria-selected="false" aria-controls="panel-borrowed" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">♟</span><span class="tab-label">借人競争</span>
+        </button>
+      </nav>
     </div>
   </main>
 </body>
