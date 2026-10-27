@@ -25,14 +25,18 @@ export function createDefaultData(){
     teamA:teams[fixture.a].id,teamB:teams[fixture.b].id,
     scoreA:null,scoreB:null,status:"未開始",winnerId:"",court:"",scheduledAt:""
   })));
-  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},source:"admin",updatedAt:""};
+  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},pointsVisible:true,source:"admin",updatedAt:""};
 }
 
 // Old Durable Object records have borrowed-race head-to-head rows instead of heats.
 // Add the new field without overwriting any existing team, sport, or match edits.
 export function ensureHeats(data){
-  if(Array.isArray(data.heats))return data;
-  return {...data,heats:createBorrowedHeats(data.teams)};
+  // Retain the prior visible-by-default behavior for already deployed tournaments.
+  if(Array.isArray(data.heats)&&typeof data.pointsVisible==="boolean")return data;
+  return {...data,
+    heats:Array.isArray(data.heats)?data.heats:createBorrowedHeats(data.teams),
+    pointsVisible:typeof data.pointsVisible==="boolean"?data.pointsVisible:true
+  };
 }
 function requiredString(value,label,max){
   if(typeof value!=="string"||!value.trim()||value.trim().length>max)
@@ -137,6 +141,14 @@ export function validateSportUpdate(input,data){
   return {sport,name,order:input.order,startTime,endTime,venue};
 }
 export function applyUpdate(data,kind,input){
+  if(kind==="settings"){
+    if(!input||typeof input!=="object"||
+       typeof input.pointsVisible!=="boolean"||typeof input.expectedPointsVisible!=="boolean")
+      throw error("ポイントの表示設定が不正です");
+    assertExpected(data.pointsVisible!==false,input.expectedPointsVisible);
+    data.pointsVisible=input.pointsVisible;
+    return {pointsVisible:data.pointsVisible};
+  }
   if(kind==="heat"){
     const u=validateHeatUpdate(input,data);
     Object.assign(u.heat,{status:u.status,ranks:u.ranks,scheduledAt:u.scheduledAt});
@@ -171,7 +183,7 @@ export class TournamentStore {
       try{return respond(ensureHeats(await this.ctx.storage.get("tournament")||createDefaultData()))}
       catch(e){console.error("Tournament read error",e);return respond({error:"保存データを取得できません"},503)}
     }
-    if(request.method==="POST"&&["/match","/team","/sport","/heat"].includes(path)){
+    if(request.method==="POST"&&["/match","/team","/sport","/heat","/settings"].includes(path)){
       try{
         const input=await request.json();
         const result=await this.ctx.storage.transaction(async tx=>{
