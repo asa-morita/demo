@@ -52,6 +52,7 @@ function markDirty(event){
 }
 function selectTab(tab,checkDirty=true){
   if(!["overview","sports","matches","borrowed"].includes(tab))return;
+  const previousTab=currentTab;
   if(tab!==currentTab&&checkDirty&&!canDiscardEdits())return false;
   if(tab!==currentTab){
     const hadUnsavedChanges=dirtyForms.size>0;
@@ -70,6 +71,9 @@ function selectTab(tab,checkDirty=true){
   document.querySelectorAll("[role=tabpanel][id^='panel-']").forEach(panel=>{
     panel.hidden=panel.id!=="panel-"+tab;
   });
+  // Switching from the bottom bar must reveal the new panel from its beginning,
+  // even after editing a long list of matches or heats.
+  if(checkDirty&&tab!==previousTab)window.scrollTo(0,0);
   return true;
 }
 
