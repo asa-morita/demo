@@ -54,7 +54,8 @@ export default {
         saveMatch:(_env,input)=>storeCall(env,"match",input),
         saveHeat:(_env,input)=>storeCall(env,"heat",input),
         saveTeam:(_env,input)=>storeCall(env,"team",input),
-        saveSport:(_env,input)=>storeCall(env,"sport",input)
+        saveSport:(_env,input)=>storeCall(env,"sport",input),
+        saveSettings:(_env,input)=>storeCall(env,"settings",input)
       });
     }
     return env.ASSETS.fetch(request);
