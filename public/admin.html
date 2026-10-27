@@ -32,6 +32,14 @@
         <button type="button" id="refreshButton">最新情報を再読込</button>
         <button type="button" id="logoutButton">ログアウト</button>
       </div>
+      <section class="panel editing-section" aria-labelledby="pointsVisibilityHeading">
+        <h2 id="pointsVisibilityHeading">総合順位のポイント表示</h2>
+        <p class="hint">観客向けの「総合順位」にある合計ptの表示を切り替えます。順位や集計は変わりません。</p>
+        <div class="visibility-settings">
+          <strong id="pointsVisibilityStatus" role="status" aria-live="polite">表示状態を読み込み中…</strong>
+          <button type="button" class="primary" id="togglePointsVisibility">表示状態を切り替える</button>
+        </div>
+      </section>
       <section class="panel editing-section">
         <h2>1. チーム名</h2>
         <p class="hint">4チームの名称を変更できます。チームIDと対戦組み合わせは固定です。</p>
