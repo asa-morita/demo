@@ -8,6 +8,7 @@ let sportId="";
 let matchSportId="";
 let currentTab="matches";
 const dirtyForms=new Set();
+let toastTimer=null;
 
 function formKey(form){
   if(form.id==="sportForm")return "sport:"+sportId;
@@ -52,8 +53,15 @@ function markDirty(event){
 function selectTab(tab,checkDirty=true){
   if(!["overview","sports","matches","borrowed"].includes(tab))return;
   if(tab!==currentTab&&checkDirty&&!canDiscardEdits())return false;
-  if(tab!==currentTab)dirtyForms.clear();
-  currentTab=tab;
+  if(tab!==currentTab){
+    const hadUnsavedChanges=dirtyForms.size>0;
+    dirtyForms.clear();
+    currentTab=tab;
+    // A confirmed discard must also reset the hidden form fields.
+    if(hadUnsavedChanges)render();
+  }else{
+    currentTab=tab;
+  }
   document.querySelectorAll("[data-admin-tab]").forEach(button=>{
     const selected=button.dataset.adminTab===tab;
     button.setAttribute("aria-selected",String(selected));
@@ -70,10 +78,12 @@ function showMessage(message,kind="info"){
   element.textContent=message;
   element.className="message "+kind;
   const toast=$("toast");
+  if(toastTimer)clearTimeout(toastTimer);
   if(kind==="success"||kind==="error"){
     toast.textContent=message;
     toast.className="toast "+kind;
     toast.hidden=false;
+    toastTimer=setTimeout(()=>{toast.hidden=true;toastTimer=null},kind==="error"?7000:3800);
   }else{
     toast.hidden=true;
   }
@@ -303,7 +313,6 @@ $("onlyUnfinished").addEventListener("change",event=>{
 });
 $("togglePointsVisibility").addEventListener("click",async()=>{
   if(!data)return;
-  if(!canDiscardEdits())return;
   const button=$("togglePointsVisibility");
   const next=!data.pointsVisible;
   button.disabled=true;
@@ -418,5 +427,10 @@ $("matchList").addEventListener("submit",async event=>{
     expectedStatus:row.status,expectedWinnerId:row.winnerId,
     expectedCourt:row.court,expectedScheduledAt:row.scheduledAt
   },"試合結果を保存しました。公開画面に数秒以内に反映されます。");
+});
+window.addEventListener("beforeunload",event=>{
+  if(!dirtyForms.size)return;
+  event.preventDefault();
+  event.returnValue="";
 });
 init();
