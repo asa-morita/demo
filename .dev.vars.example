@@ -1,13 +1,7 @@
-# Copy this file to .dev.vars for local development.
-# Leave SHEETS_SPREADSHEET_ID absent to use sample data.
-SHEETS_SPREADSHEET_ID=""
-# For a PRIVATE sheet use both entries below. Share the sheet with SHEETS_CLIENT_EMAIL.
-SHEETS_CLIENT_EMAIL=""
-SHEETS_PRIVATE_KEY=""
-# Optional for a PUBLIC sheet's read-only viewer only (admin writes still require service account):
-# SHEETS_API_KEY=""
+# Copy to .dev.vars for local development. Never commit the actual .dev.vars.
+# Tournament data is stored automatically in a local Durable Object by wrangler dev.
+# Production data is stored in Cloudflare Durable Objects and survives deployments.
 
-# Administrator login - MUST use long, independently generated secrets.
-# Do not put actual credentials in GitHub. Configure both in Cloudflare Secrets.
+# Set two independently generated secrets in Cloudflare Worker Secrets.
 ADMIN_PASSWORD=""
 ADMIN_SESSION_SECRET=""
