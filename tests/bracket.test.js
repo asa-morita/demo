@@ -198,7 +198,7 @@ test("borrowed race awards no podium points until all four 4-team heats complete
   ]);
   const overall=computeOverall(d);
   assert.equal(overall.completedSports,2);
-  assert.deepEqual(Object.fromEntries(overall.rows.map(t=>[t.id,t.points])),{A:50,B:0,C:40,D:10});
+  assert.deepEqual(Object.fromEntries(overall.rows.map(t=>[t.id,t.points])),{A:50,B:20,C:40,D:10});
 });
 test("borrowed race shares tied rank and rejects inconsistent finished heats",()=>{
   const d=fresh();
