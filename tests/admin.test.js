@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createSession,verifySession,handleAdminApi} from "../src/admin.js";
-import {createDefaultData,applyUpdate,TournamentStore} from "../src/store.js";
+import {createDefaultData,ensureHeats,applyUpdate,TournamentStore} from "../src/store.js";
 import worker from "../src/worker.js";
 
 const base="http://localhost:8787";
@@ -62,7 +62,9 @@ test("default store creates 4 teams, 6 sports, and unplayed fixtures",()=>{
   const data=createDefaultData();
   assert.equal(data.teams.length,4);
   assert.equal(data.sports.length,6);
-  assert.equal(data.matches.length,36);
+  assert.equal(data.matches.length,30);
+  assert.equal(data.heats.length,4);
+  assert.equal(data.matches.some(m=>m.sportId==="borrowed"),false);
   assert.equal(data.matches.every(m=>m.status==="未開始"&&m.winnerId===""),true);
   assert.equal(data.source,"admin");
 });
@@ -163,4 +165,45 @@ test("Google APIs and secrets are not used in worker code",()=>{
   const source=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
   const admin=readFileSync(new URL("../src/admin.js",import.meta.url),"utf8");
   assert.doesNotMatch(source+admin,/SHEETS_|sheets.googleapis.com|oauth2.googleapis.com/);
+});
+
+test("borrowed-race heat edits require distinct 1-4 places and reject stale edits",()=>{
+  const data=createDefaultData();
+  const input={
+    heatId:"H1",status:"終了",ranks:{A:1,B:2,C:3,D:4},
+    scheduledAt:"15:00",expectedStatus:"未開始",
+    expectedRanks:{A:0,B:0,C:0,D:0},expectedScheduledAt:""
+  };
+  assert.throws(()=>applyUpdate(data,"heat",{...input,ranks:{A:1,B:1,C:3,D:4}}),/重複/);
+  assert.throws(()=>applyUpdate(data,"heat",{...input,ranks:{A:1,B:2,C:3,D:0}}),/重複/);
+  assert.throws(()=>applyUpdate(data,"heat",{...input,status:"試合中"}),/空欄/);
+  assert.deepEqual(applyUpdate(data,"heat",input),{
+    heatId:"H1",status:"終了",ranks:{A:1,B:2,C:3,D:4}
+  });
+  assert.throws(()=>applyUpdate(data,"heat",input),e=>e.conflict);
+  assert.equal(data.heats[0].scheduledAt,"15:00");
+  assert.throws(()=>applyUpdate(data,"match",{...initialMatch,sportId:"borrowed"}),/4回制/);
+});
+test("legacy tournament storage adds empty heat entries without modifying old results",()=>{
+  const data=createDefaultData();
+  delete data.heats;
+  const before=JSON.stringify(data.matches);
+  const migrated=ensureHeats(data);
+  assert.equal(migrated.heats.length,4);
+  assert.equal(JSON.stringify(migrated.matches),before);
+  assert.equal(migrated.heats[0].status,"未開始");
+});
+test("authenticated heat saves persist across reads and reject anonymous access",async()=>{
+  const {env}=setup();
+  const input={heatId:"H2",status:"終了",ranks:{A:2,B:3,C:1,D:4},
+    scheduledAt:"14:30",expectedStatus:"未開始",
+    expectedRanks:{A:0,B:0,C:0,D:0},expectedScheduledAt:""};
+  assert.equal((await worker.fetch(request("/api/admin/heat","POST",input),env)).status,401);
+  const cookie=await login(env);
+  const saved=await worker.fetch(request("/api/admin/heat","POST",input,base,cookie),env);
+  assert.equal(saved.status,200);
+  const data=await (await worker.fetch(request("/api/results"),env)).json();
+  assert.deepEqual(data.heats[1].ranks,input.ranks);
+  assert.equal(data.heats[1].scheduledAt,"14:30");
+  assert.equal((await worker.fetch(request("/api/admin/heat","POST",input,base,cookie),env)).status,409);
 });
