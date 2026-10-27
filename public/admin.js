@@ -50,7 +50,31 @@ function winnerOptions(match,selected){
       escapeHTML(data.teams.find(t=>t.id===id)?.name||id)+'</option>'
     ).join("");
 }
+
+function renderHeats(){
+  const heats=data.heats.filter(h=>h.sportId==="borrowed");
+  $("matchList").innerHTML=["H1","H2","H3","H4"].map((id,index)=>{
+    const heat=heats.find(h=>h.id===id);
+    if(!heat)return '<p class="problem-text">第'+(index+1)+'回の記録を取得できません。</p>';
+    const statusOptions=["未開始","試合中","終了"].map(value=>
+      '<option value="'+value+'"'+(heat.status===value?' selected':'')+'>'+value+'</option>').join("");
+    const rankOptions=team=>'<option value="0">未入力</option>'+[1,2,3,4].map(rank=>
+      '<option value="'+rank+'"'+(heat.ranks?.[team.id]===rank?' selected':'')+'>'+rank+'位</option>'
+    ).join("");
+    const ranks=data.teams.map(team=>
+      '<label>'+escapeHTML(team.name)+' の順位'+
+      '<select name="rank-'+escapeHTML(team.id)+'"'+(heat.status!=="終了"?' disabled':'')+'>'+
+      rankOptions(team)+'</select></label>').join("");
+    return '<form class="match-editor heat-editor" data-heat-id="'+escapeHTML(id)+'">'+
+      '<div class="match-heading"><span>第'+(index+1)+'回 ・ 4チーム同時</span>'+
+      '<span class="match-state">'+escapeHTML(heat.status)+'</span></div>'+
+      '<div class="fields"><label>実施状態<select name="status">'+statusOptions+'</select></label>'+
+      '<label>開始予定<input name="scheduledAt" maxlength="80" value="'+escapeHTML(heat.scheduledAt||"")+'"></label>'+
+      ranks+'</div><button class="primary save" type="submit">第'+(index+1)+'回の順位を保存</button></form>';
+  }).join("");
+}
 function renderMatches(){
+  if(sportId==="borrowed"){renderHeats();return;}
   const league=buildRoundRobin(data,sportId);
   if(!league){$("matchList").replaceChildren();return}
   $("matchList").innerHTML=league.all.map(match=>{
@@ -184,12 +208,40 @@ $("sportForm").addEventListener("submit",async event=>{
 });
 $("matchList").addEventListener("change",event=>{
   if(event.target.name!=="status")return;
+  const heatForm=event.target.closest("form[data-heat-id]");
+  if(heatForm){
+    heatForm.querySelectorAll('select[name^="rank-"]').forEach(select=>{
+      select.disabled=event.target.value!=="終了";
+      if(select.disabled)select.value="0";
+    });
+    return;
+  }
   const winner=event.target.closest("form")?.elements.namedItem("winnerId");
   if(!winner)return;
   winner.disabled=event.target.value!=="終了";
   if(winner.disabled)winner.value="";
 });
 $("matchList").addEventListener("submit",async event=>{
+  const heatForm=event.target.closest("form[data-heat-id]");
+  if(heatForm){
+    event.preventDefault();
+    const heat=data.heats.find(h=>h.sportId==="borrowed"&&h.id===heatForm.dataset.heatId);
+    if(!heat)return;
+    const status=heatForm.elements.namedItem("status").value;
+    const ranks=Object.fromEntries(data.teams.map(team=>[
+      team.id,status==="終了"?Number(heatForm.elements.namedItem("rank-"+team.id).value):0
+    ]));
+    if(status==="終了"&&new Set(Object.values(ranks)).size!==4){
+      showMessage("4チームの順位を重複なく1〜4位で入力してください。","error");return;
+    }
+    await save(heatForm,"heat",{
+      heatId:heat.id,status,ranks,
+      scheduledAt:heatForm.elements.namedItem("scheduledAt").value,
+      expectedStatus:heat.status,expectedRanks:heat.ranks,
+      expectedScheduledAt:heat.scheduledAt
+    },"第"+heat.id.slice(1)+"回の順位を保存しました。");
+    return;
+  }
   const form=event.target.closest("form[data-match-id]");
   if(!form)return;
   event.preventDefault();
