@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed,formatOverallPoints} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
@@ -216,4 +216,21 @@ test("borrowed race shares tied rank and rejects inconsistent finished heats",()
   assert.equal(invalid.completed,false);
   assert.equal(invalid.all[3].status,"要確認");
   assert.equal(computeOverall(d).completedSports,1);
+});
+
+test("total points are masked only in the public display while ranking stays intact",()=>{
+  const d=fresh();
+  assert.equal(normalizeData({...d,pointsVisible:false}).pointsVisible,false);
+  assert.equal(normalizeData({...d,pointsVisible:true}).pointsVisible,true);
+  const old=structuredClone(d);
+  delete old.pointsVisible;
+  assert.equal(normalizeData(old).pointsVisible,true);
+  const before=computeOverall(d);
+  const hidden=normalizeData({...d,pointsVisible:false});
+  const after=computeOverall(hidden);
+  assert.deepEqual(after,before);
+  assert.equal(formatOverallPoints(50,true),"50");
+  assert.equal(formatOverallPoints(0,true),"0");
+  assert.equal(formatOverallPoints(50,false),"⁇?");
+  assert.equal(formatOverallPoints(0,false),"⁇?");
 });

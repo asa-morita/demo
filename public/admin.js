@@ -100,8 +100,18 @@ function renderMatches(){
       '</div><button class="primary save" type="submit">この試合を保存</button></form>';
   }).join("");
 }
+function renderPointVisibility(){
+  const visible=data.pointsVisible;
+  $("pointsVisibilityStatus").textContent=visible
+    ?"現在：表示（合計ptを公開中）"
+    :"現在：非表示（合計ptは「⁇?」と表示）";
+  $("togglePointsVisibility").textContent=visible
+    ?"ポイントを非表示にする"
+    :"ポイントを表示する";
+}
 function render(){
   if(!data)return;
+  renderPointVisibility();
   if(!data.sports.some(s=>s.id===sportId))sportId=data.sports[0]?.id||"";
   $("sportSelect").innerHTML=data.sports.map(s=>
     '<option value="'+escapeHTML(s.id)+'"'+(s.id===sportId?' selected':'')+'>'+
@@ -167,6 +177,26 @@ $("sportSelect").addEventListener("change",event=>{
   sportId=event.target.value;
   renderSport();
   renderMatches();
+});
+$("togglePointsVisibility").addEventListener("click",async()=>{
+  if(!data)return;
+  const button=$("togglePointsVisibility");
+  const next=!data.pointsVisible;
+  button.disabled=true;
+  try{
+    await api("settings","POST",{
+      pointsVisible:next,
+      expectedPointsVisible:data.pointsVisible
+    });
+    await loadData();
+    showMessage(next
+      ?"総合順位のポイントを公開しました。"
+      :"総合順位のポイントを非表示にしました。公開画面では「⁇?」と表示されます。","success");
+  }catch(err){
+    showMessage(err.message+(err.status===409?" 最新情報を再読込してください。":""),"error");
+  }finally{
+    button.disabled=false;
+  }
 });
 $("refreshButton").addEventListener("click",async()=>{
   $("refreshButton").disabled=true;

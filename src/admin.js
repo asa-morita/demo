@@ -110,10 +110,10 @@ export async function handleAdminApi(request,env,handlers){
       return json({error:"保存データの読込に失敗しました"},503)
     }
   }
-  if(["/api/admin/match","/api/admin/heat","/api/admin/team","/api/admin/sport"].includes(pathname)&&method==="POST"){
+  if(["/api/admin/match","/api/admin/heat","/api/admin/team","/api/admin/sport","/api/admin/settings"].includes(pathname)&&method==="POST"){
     let input;try{input=await readJson(request)}catch(e){return json({error:e.message},400)}
     try{
-      const handler={"/api/admin/match":handlers.saveMatch,"/api/admin/heat":handlers.saveHeat,"/api/admin/team":handlers.saveTeam,"/api/admin/sport":handlers.saveSport}[pathname];
+      const handler={"/api/admin/match":handlers.saveMatch,"/api/admin/heat":handlers.saveHeat,"/api/admin/team":handlers.saveTeam,"/api/admin/sport":handlers.saveSport,"/api/admin/settings":handlers.saveSettings}[pathname];
       const result=await handler(env,input);
       return json({ok:true,...result});
     }catch(e){

@@ -60,3 +60,8 @@ button.primary{background:var(--yellow);border-color:#d0b018;color:#111}
  .team-grid{grid-template-columns:1fr}
  .team-editor button{white-space:nowrap}
 }
+
+.visibility-settings{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.visibility-settings strong{font-size:14px}
+.visibility-settings button{flex-shrink:0}
+@media(max-width:580px){.visibility-settings button{width:100%}}

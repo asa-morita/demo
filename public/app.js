@@ -1,4 +1,4 @@
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,computeOverall} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,computeOverall,formatOverallPoints} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
 const state={tab:"schedule",sport:"",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -119,7 +119,7 @@ function renderStandings(data){
   const overall=computeOverall(data);
   const inProgress=overall.totalSports-overall.completedSports;
   const rows=overall.rows.map(r=>`<tr class="${r.rank===1&&r.points>0?"leader":""}">
-     <td><span class="rank-symbol">${r.rank??"–"}</span></td><td>${esc(r.name)}</td><td class="num">${r.points}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
+     <td><span class="rank-symbol">${r.rank??"–"}</span></td><td>${esc(r.name)}</td><td class="num">${esc(formatOverallPoints(r.points,data.pointsVisible))}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
   </tr>`).join("");
   const listing=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>合計pt</th><th>優勝</th><th>準優勝</th><th>3位</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   const note=`<p class="point-note">対抗形式の競技は全6試合が確定すると加点します。借人競争は全4回の順位を合算し、順位合計が小さいチームを上位として4回すべて終了後に加点します。同順位は同額加点です。総合順位の同点は優勝・準優勝・3位の回数で比較し、なお同数なら同順位とします。配点は1位30点、2位20点、3位10点で固定です。</p>`;
