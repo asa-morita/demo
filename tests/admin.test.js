@@ -305,6 +305,18 @@ test("navigation warns about unsaved edits and preserves drafts when saving anot
   assert.match(source,/await loadData\(\{preserveDrafts:true,excludeForm:form\}\)/);
   assert.match(source,/window\.addEventListener\("beforeunload"/);
   const css=readFileSync(new URL("../public/admin.css",import.meta.url),"utf8");
-  assert.match(css,/\.admin-tabs\{display:grid/);
+  assert.ok(css.includes(".admin-bottom-nav{position:fixed"));
+  assert.ok(css.includes("padding-bottom:env(safe-area-inset-bottom"));
+  assert.ok(!css.includes(".admin-tabs{display:grid"));
   assert.match(css,/\.is-dirty/);
+});
+
+test("tab navigation is in footer after editor panels and keeps all four button IDs",()=>{
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const content=html.indexOf('id="panel-borrowed"');
+  const nav=html.indexOf('class="admin-bottom-nav"');
+  assert.ok(nav>content);
+  assert.match(html,/class="admin-bottom-nav-inner"/);
+  assert.equal((html.match(/data-admin-tab=/g)||[]).length,4);
+  assert.doesNotMatch(html,/class="admin-tabs"/);
 });
