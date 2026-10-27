@@ -207,3 +207,58 @@ test("authenticated heat saves persist across reads and reject anonymous access"
   assert.equal(data.heats[1].scheduledAt,"14:30");
   assert.equal((await worker.fetch(request("/api/admin/heat","POST",input,base,cookie),env)).status,409);
 });
+
+test("overall point visibility defaults to shown, persists, and handles old records",()=>{
+  const current=createDefaultData();
+  assert.equal(current.pointsVisible,true);
+  const old=structuredClone(current);
+  delete old.pointsVisible;
+  assert.equal(ensureHeats(old).pointsVisible,true);
+  const saved=applyUpdate(current,"settings",{pointsVisible:false,expectedPointsVisible:true});
+  assert.deepEqual(saved,{pointsVisible:false});
+  assert.equal(current.pointsVisible,false);
+  assert.equal(ensureHeats(current).pointsVisible,false);
+  assert.throws(()=>applyUpdate(current,"settings",{pointsVisible:true,expectedPointsVisible:true}),e=>e.conflict===true);
+  assert.throws(()=>applyUpdate(current,"settings",{pointsVisible:"false",expectedPointsVisible:false}),/不正/);
+  assert.throws(()=>applyUpdate(current,"settings",{pointsVisible:true}),/不正/);
+  assert.equal(current.teams.length,4);
+  assert.equal(current.matches.length,30);
+});
+test("admin can hide and restore overall points without modifying results",async()=>{
+  const {env,getSaved}=setup();
+  const publicBefore=await (await worker.fetch(request("/api/results"),env)).json();
+  assert.equal(publicBefore.pointsVisible,true);
+  const beforeMatches=JSON.stringify(publicBefore.matches);
+  const cookie=await login(env);
+  const hide={pointsVisible:false,expectedPointsVisible:true};
+  assert.equal((await worker.fetch(request("/api/admin/settings","POST",hide),env)).status,401);
+  assert.equal((await worker.fetch(request("/api/admin/settings","POST",hide,"https://evil.example",cookie),env)).status,403);
+  const hidden=await worker.fetch(request("/api/admin/settings","POST",hide,base,cookie),env);
+  assert.equal(hidden.status,200);
+  assert.equal((await hidden.json()).pointsVisible,false);
+  assert.equal(getSaved().pointsVisible,false);
+  assert.equal((await worker.fetch(request("/api/admin/settings","POST",hide,base,cookie),env)).status,409);
+  const invalid=await worker.fetch(request("/api/admin/settings","POST",{
+    pointsVisible:"false",expectedPointsVisible:false
+  },base,cookie),env);
+  assert.equal(invalid.status,400);
+  const publicHidden=await (await worker.fetch(request("/api/results"),env)).json();
+  assert.equal(publicHidden.pointsVisible,false);
+  assert.equal(JSON.stringify(publicHidden.matches),beforeMatches);
+  assert.ok(publicHidden.updatedAt);
+  const shown=await worker.fetch(request("/api/admin/settings","POST",{
+    pointsVisible:true,expectedPointsVisible:false
+  },base,cookie),env);
+  assert.equal(shown.status,200);
+  const publicRestored=await (await worker.fetch(request("/api/results"),env)).json();
+  assert.equal(publicRestored.pointsVisible,true);
+});
+test("admin page includes visibility control and public script masks total-point cells",()=>{
+  const admin=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const adminJs=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
+  assert.match(admin,/id="togglePointsVisibility"/);
+  assert.match(admin,/id="pointsVisibilityStatus"/);
+  assert.match(adminJs,/api\("settings","POST"/);
+  assert.match(app,/formatOverallPoints\(r\.points,data\.pointsVisible\)/);
+});
