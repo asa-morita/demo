@@ -10,11 +10,20 @@
   <script type="module" src="/admin.js"></script>
 </head>
 <body>
-  <header class="admin-header"><strong>体育祭 2026 <span>管理画面</span></strong><a href="/">公開画面に戻る</a></header>
+  <header class="admin-header">
+    <strong>体育祭 2026 <span>運営管理</span></strong>
+    <a href="/">公開画面に戻る</a>
+  </header>
   <main>
-    <h1>大会データの管理</h1>
-    <p class="lead">チーム名、競技情報、各試合の勝敗をここで編集します。保存内容はサーバーに記録され、公開画面へ反映されます。</p>
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">SPORTS FESTIVAL · ADMIN</p>
+        <h1>大会データの管理</h1>
+        <p class="lead">変更は各項目の保存ボタンで反映されます。試合結果は公開画面にも自動反映されます。</p>
+      </div>
+    </div>
     <div id="message" class="message" role="status" aria-live="polite">認証状態を確認しています…</div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <section id="loginPanel" class="panel" hidden>
       <h2>管理者ログイン</h2>
       <form id="loginForm">
@@ -22,49 +31,105 @@
         <input id="password" type="password" minlength="1" autocomplete="current-password" required>
         <button type="submit" class="primary">ログイン</button>
       </form>
-      <p class="hint">管理者認証にはCloudflare WorkerのSecretsを使用します。</p>
+      <p class="hint">認証情報はCloudflare WorkerのSecretsで管理します。</p>
     </section>
-    <section id="editorPanel" hidden>
-      <div class="panel toolbar">
-        <label for="sportSelect">編集する競技
-          <select id="sportSelect"></select>
-        </label>
-        <button type="button" id="refreshButton">最新情報を再読込</button>
-        <button type="button" id="logoutButton">ログアウト</button>
-      </div>
-      <section class="panel editing-section" aria-labelledby="pointsVisibilityHeading">
-        <h2 id="pointsVisibilityHeading">総合順位のポイント表示</h2>
-        <p class="hint">観客向けの「総合順位」にある合計ptの表示を切り替えます。順位や集計は変わりません。</p>
-        <div class="visibility-settings">
-          <strong id="pointsVisibilityStatus" role="status" aria-live="polite">表示状態を読み込み中…</strong>
-          <button type="button" class="primary" id="togglePointsVisibility">表示状態を切り替える</button>
+    <div id="editorPanel" hidden>
+      <div class="admin-utility panel">
+        <div class="utility-status">
+          <strong>管理者としてログイン中</strong>
+          <span id="savedAt">大会情報を読み込み中…</span>
         </div>
-      </section>
-      <section class="panel editing-section">
-        <h2>1. チーム名</h2>
-        <p class="hint">4チームの名称を変更できます。チームIDと対戦組み合わせは固定です。</p>
-        <div id="teamList" class="team-grid"></div>
-      </section>
-      <section class="panel editing-section">
-        <h2>2. 競技情報</h2>
-        <p class="hint">上の選択欄で競技を切り替えられます。時刻と会場は空欄でも構いません。</p>
-        <form id="sportForm">
-          <div class="fields">
-            <label>競技名<input name="name" type="text" maxlength="40" required></label>
-            <label>表示順<input name="order" type="number" min="1" max="999" step="1" required></label>
-            <label>開始時刻<input name="startTime" type="time"></label>
-            <label>終了時刻<input name="endTime" type="time"></label>
+        <div class="utility-buttons">
+          <button type="button" id="refreshButton">最新情報を再読込</button>
+          <button type="button" id="logoutButton">ログアウト</button>
+        </div>
+      </div>
+      <nav class="admin-tabs" role="tablist" aria-label="管理画面の編集対象">
+        <button type="button" role="tab" id="tab-overview" data-admin-tab="overview" aria-selected="false" aria-controls="panel-overview" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">⚙</span>全体設定
+        </button>
+        <button type="button" role="tab" id="tab-sports" data-admin-tab="sports" aria-selected="false" aria-controls="panel-sports" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">▦</span>競技・日程
+        </button>
+        <button type="button" role="tab" id="tab-matches" data-admin-tab="matches" aria-selected="true" aria-controls="panel-matches" tabindex="0">
+          <span class="tab-icon" aria-hidden="true">⚑</span>対抗戦結果
+        </button>
+        <button type="button" role="tab" id="tab-borrowed" data-admin-tab="borrowed" aria-selected="false" aria-controls="panel-borrowed" tabindex="-1">
+          <span class="tab-icon" aria-hidden="true">♟</span>借人競争
+        </button>
+      </nav>
+
+      <section id="panel-overview" class="tab-panel" role="tabpanel" aria-labelledby="tab-overview" hidden>
+        <div class="tab-intro">
+          <h2>全体設定</h2>
+          <p>総合ポイントの公開設定と、参加4チームの名称を管理します。</p>
+        </div>
+        <section class="panel editing-section" aria-labelledby="pointsVisibilityHeading">
+          <h3 id="pointsVisibilityHeading">総合順位のポイント表示</h3>
+          <p class="hint">公開画面の「合計pt」だけを切り替えます。非表示時は「⁇?」となり、順位計算は変わりません。</p>
+          <div class="visibility-settings">
+            <strong id="pointsVisibilityStatus" role="status" aria-live="polite">表示状態を読み込み中…</strong>
+            <button type="button" class="primary" id="togglePointsVisibility">表示状態を切り替える</button>
           </div>
-          <label>会場<input name="venue" type="text" maxlength="80" placeholder="未定の場合は空欄"></label>
-          <button class="primary" type="submit">競技情報を保存</button>
-        </form>
+        </section>
+        <section class="panel editing-section" aria-labelledby="teamsHeading">
+          <h3 id="teamsHeading">チーム名</h3>
+          <p class="hint">ID（A〜D）と組み合わせは固定です。チーム名のみ変更できます。</p>
+          <div id="teamList" class="team-grid"></div>
+        </section>
       </section>
-      <section class="editing-section">
-        <h2>3. 試合・回別結果</h2>
-        <p class="hint">2チーム対抗競技は3節・全6試合で、終了時に勝者を入力します。綱引きも同じ組み合わせです。借人競争は全4回、各回に4チームの順位（1〜4位）を記録します。</p>
+
+      <section id="panel-sports" class="tab-panel" role="tabpanel" aria-labelledby="tab-sports" hidden>
+        <div class="tab-intro"><h2>競技・日程</h2><p>競技の名称、表示順、開始・終了時刻、会場を変更できます。</p></div>
+        <section class="panel editing-section">
+          <label for="sportSelect">編集する競技
+            <select id="sportSelect"></select>
+          </label>
+          <form id="sportForm">
+            <div class="fields">
+              <label>競技名<input name="name" type="text" maxlength="40" required></label>
+              <label>表示順<input name="order" type="number" min="1" max="999" step="1" required></label>
+              <label>開始時刻<input name="startTime" type="time"></label>
+              <label>終了時刻<input name="endTime" type="time"></label>
+            </div>
+            <label>会場<input name="venue" type="text" maxlength="80" placeholder="未定の場合は空欄"></label>
+            <button class="primary" type="submit">競技情報を保存</button>
+          </form>
+        </section>
+      </section>
+
+      <section id="panel-matches" class="tab-panel" role="tabpanel" aria-labelledby="tab-matches">
+        <div class="tab-intro"><h2>対抗戦の結果入力</h2>
+          <p>フットサルなど5競技の総当たり戦です。綱引きも2チーム対抗・3節×各2試合の全6試合です。</p>
+        </div>
+        <div class="panel match-toolbar">
+          <label for="matchSportSelect">結果を入力する競技
+            <select id="matchSportSelect"></select>
+          </label>
+          <div class="match-filter">
+            <label class="inline-checkbox" for="onlyUnfinished">
+              <input type="checkbox" id="onlyUnfinished">
+              未終了の試合だけ表示
+            </label>
+            <strong id="matchProgress" aria-live="polite"></strong>
+          </div>
+        </div>
+        <p class="hint">「終了」にすると勝者を選択できます。変更した試合ごとに保存してください。</p>
         <div id="matchList" class="match-list"></div>
       </section>
-    </section>
+
+      <section id="panel-borrowed" class="tab-panel" role="tabpanel" aria-labelledby="tab-borrowed" hidden>
+        <div class="tab-intro"><h2>借人競争・全4回</h2>
+          <p>PR #8の4チーム同時参加方式です。第1〜4回それぞれの順位（1〜4位）を入力します。</p>
+        </div>
+        <div class="panel borrowed-summary">
+          <strong id="heatProgress">第0/4回 終了</strong>
+          <p class="hint">終了した回の順位合計が小さいほど上位です。全4回終了後に総合ポイントが確定します。</p>
+          <div id="borrowedStandings" class="compact-table"></div>
+        </div>
+        <div id="heatList" class="match-list"></div>
+      </section>
+    </div>
   </main>
 </body>
 </html>
