@@ -112,3 +112,13 @@ test("light blue is explicitly applied to the matrix and next event cards",()=>{
   assert.match(css,/td\.matrix-next\{background:#c9efff/);
   assert.match(css,/\.result-row\.next-match,\.borrowed-heat\.next-match\{background:#c9efff/);
 });
+
+test("schedule hides the top festival intro while other tabs retain their headings",async t=>{
+  const page=await setup();t.after(page.close);
+  const intro=page.document.querySelector(".page-intro");
+  assert.equal(intro.hidden,true);
+  page.document.querySelector('[data-tab="standings"]').click();
+  assert.equal(intro.hidden,false);
+  page.document.querySelector('[data-tab="schedule"]').click();
+  assert.equal(intro.hidden,true);
+});
