@@ -132,3 +132,8 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 /* Next match or heat outside the round-robin matrix. */
 .result-row.next-match,.borrowed-heat.next-match{background:#c9efff;border-color:#4baad4;box-shadow:inset 0 0 0 1px #4baad4}
 .next-match-label{font-size:11px;font-weight:800;color:#07516f}
+
+/* Completed round-robin fixtures: symbols only, red circle for win and blue cross for loss. */
+.round-robin-table .matrix-win,.round-robin-table .matrix-loss{background:#fff}
+.round-robin-table .matrix-win .matrix-result__main{color:#df3030;font-size:clamp(18px,5vw,29px)}
+.round-robin-table .matrix-loss .matrix-result__main{color:#2176d2;font-size:clamp(18px,5vw,29px)}
