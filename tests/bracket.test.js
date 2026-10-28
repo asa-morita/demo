@@ -11,7 +11,7 @@ test("five sports including tug-of-war use 3 rounds with two matches; borrowed r
   const d=fresh();
   assert.deepEqual(d.teams.map(t=>t.id),["A","B","C","D"]);
   assert.equal(d.sports.length,6);
-  assert.deepEqual(d.sports.map(x=>x.name),["フットサル","バレーボール","バスケットボール","ドッチボール","綱引き","借人競争"]);
+  assert.deepEqual(d.sports.map(x=>x.name),["バレーボール","バスケットボール","フットサル","ドッジボール","綱引き","借人競争"]);
   assert.equal(FIXTURES.length,6);
   for(const s of d.sports.filter(s=>s.id!=="borrowed")){
     const league=buildRoundRobin(d,s.id);
