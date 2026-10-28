@@ -1,4 +1,4 @@
-import {FIXTURES,PODIUM_POINTS,BORROWED_HEAT_IDS,createBorrowedHeats} from "../public/bracket.js";
+import {FIXTURES,TUG_FIXTURES,createTugMatches,PODIUM_POINTS,BORROWED_HEAT_IDS,createBorrowedHeats} from "../public/bracket.js";
 
 const clean=(value)=>String(value??"").trim();
 const error=(message,conflict=false)=>{
@@ -8,6 +8,7 @@ const error=(message,conflict=false)=>{
 };
 // Increment on one-time published event order changes, never to override later admin edits.
 const SPORTS_ORDER_VERSION=1;
+const TUG_FORMAT_VERSION=1;
 const FIRST_FOUR_SPORTS=["volleyball","basketball","futsal","dodgeball"];
 const sportsSeed=[
   ["volleyball","バレーボール"],
@@ -23,27 +24,35 @@ export function createDefaultData(){
   const sports=sportsSeed.map(([id,name],index)=>({
     id,name,order:index+1,startTime:"",endTime:"",venue:""
   }));
-  const matches=sports.filter(sport=>sport.id!=="borrowed").flatMap(sport=>FIXTURES.map(fixture=>({
+  const matches=sports.filter(sport=>sport.id!=="borrowed"&&sport.id!=="tugofwar").flatMap(sport=>FIXTURES.map(fixture=>({
     sportId:sport.id,id:fixture.id,
     teamA:teams[fixture.a].id,teamB:teams[fixture.b].id,
     scoreA:null,scoreB:null,status:"未開始",winnerId:"",court:"",scheduledAt:""
-  })));
-  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},pointsVisible:true,sportsOrderVersion:SPORTS_ORDER_VERSION,source:"admin",updatedAt:""};
+  }))).concat(createTugMatches(teams));
+  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},pointsVisible:true,sportsOrderVersion:SPORTS_ORDER_VERSION,tugFormatVersion:TUG_FORMAT_VERSION,source:"admin",updatedAt:""};
 }
 
 // Upgrade existing Durable Object records without resetting winners, scheduled times or teams.
 // The sports order migration runs once, so the admin can freely edit order afterward.
 export function ensureHeats(data){
   const migrateSportsOrder=(data.sportsOrderVersion??0)<SPORTS_ORDER_VERSION;
-  if(!migrateSportsOrder&&Array.isArray(data.heats)&&typeof data.pointsVisible==="boolean")return data;
+  const migrateTug=(data.tugFormatVersion??0)<TUG_FORMAT_VERSION;
+  if(!migrateSportsOrder&&!migrateTug&&Array.isArray(data.heats)&&typeof data.pointsVisible==="boolean")return data;
   const sports=migrateSportsOrder?data.sports.map(sport=>{
     const index=FIRST_FOUR_SPORTS.indexOf(sport.id);
     if(index<0)return sport;
     return {...sport,order:index+1,
       ...(sport.id==="dodgeball"&&sport.name==="ドッチボール"?{name:"ドッジボール"}:{})};
   }):data.sports;
+  const previousTug=migrateTug?(data.matches||[]).filter(m=>m.sportId==="tugofwar"):[];
   return {...data,
-    sports,sportsOrderVersion:SPORTS_ORDER_VERSION,
+    sports,sportsOrderVersion:SPORTS_ORDER_VERSION,tugFormatVersion:TUG_FORMAT_VERSION,
+    // Old 1v1 tug results are incompatible with 2v2 results; archive them once.
+    ...(migrateTug&&previousTug.length?{legacyTugMatches:previousTug}:{}),
+    matches:migrateTug?[
+      ...(data.matches||[]).filter(m=>m.sportId!=="tugofwar"),
+      ...createTugMatches(data.teams)
+    ]:data.matches,
     heats:Array.isArray(data.heats)?data.heats:createBorrowedHeats(data.teams),
     pointsVisible:typeof data.pointsVisible==="boolean"?data.pointsVisible:true
   };
@@ -71,12 +80,14 @@ export function validateMatchUpdate(input,data){
   const sportId=clean(input.sportId),matchId=clean(input.matchId);
   findSport(data,sportId);
   if(sportId==="borrowed")throw error("借人競争は4回制の順位入力画面を使用してください");
-  const fixture=FIXTURES.find(f=>f.id===matchId);
+  const isTug=sportId==="tugofwar";
+  const fixture=(isTug?TUG_FIXTURES:FIXTURES).find(f=>f.id===matchId);
   if(!fixture||data.teams.length!==4)throw error("対戦カードが不正です");
   const matches=data.matches.filter(m=>m.sportId===sportId&&m.id===matchId);
   if(matches.length!==1)throw error("試合情報が存在しない、または重複しています");
   const match=matches[0];
-  const teamA=data.teams[fixture.a].id,teamB=data.teams[fixture.b].id;
+  const teamA=isTug?fixture.sideA.map(i=>data.teams[i].id).join("+"):data.teams[fixture.a].id;
+  const teamB=isTug?fixture.sideB.map(i=>data.teams[i].id).join("+"):data.teams[fixture.b].id;
   if(match.teamA!==teamA||match.teamB!==teamB)throw error("対戦カードのチームが一致しません");
   const status=clean(input.status),winnerId=clean(input.winnerId);
   if(!["未開始","試合中","終了"].includes(status))throw error("試合状態が不正です");
