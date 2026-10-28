@@ -1,4 +1,4 @@
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,buildTugOfWar,computeOverall,formatOverallPoints,formatMatchLabel} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,buildTugOfWar,computeOverall,formatOverallPoints,formatMatchLabel,nextPendingMatch} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
 const state={tab:"schedule",sport:"",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -39,14 +39,16 @@ function renderSchedule(data) {
 function renderBorrowed(data){
   const race=buildBorrowed(data);
   if(!race)return section("借人競争",null,'<div class="empty">競技情報がありません。</div>');
-  const teamNames=new Map(data.teams.map(t=>[t.id,t.name]));
+  const next=nextPendingMatch(race.all);
   const heats=race.all.map(heat=>{
     const cells=data.teams.map(team=>{
       const rank=heat.finished?heat.ranks[team.id]:null;
       return '<div class="borrowed-place"><strong>'+esc(team.name)+'</strong>'+
         '<span>'+(rank?rank+'位':'–')+'</span></div>';
     }).join("");
-    return '<div class="borrowed-heat"><div class="match-heading"><strong>'+esc(heat.label)+'</strong>'+
+    const upcoming=heat.id===next?.id;
+    return '<div class="borrowed-heat'+(upcoming?' next-match':'')+'"><div class="match-heading"><strong>'+esc(heat.label)+'</strong>'+
+      (upcoming?'<span class="next-match-label">次の回</span>':'')+
       '<span class="match-state">'+esc(heat.status)+'</span></div>'+
       (heat.scheduledAt?'<p class="muted">開始予定：'+esc(heat.scheduledAt)+'</p>':'')+
       (heat.issue?'<p class="problem-text">'+esc(heat.issue)+'</p>':'')+
@@ -66,10 +68,12 @@ function renderBorrowed(data){
 function renderTugOfWar(data){
   const league=buildTugOfWar(data);
   if(!league)return section("綱引き",null,'<div class="empty">競技情報がありません。</div>');
+  const next=nextPendingMatch(league.all);
   const fixtures=league.all.map(m=>{
     const winner=m.winner?(m.winner===m.teamA?m.labelA:m.labelB):"";
-    return `<div class="result-row tug-fixture">
-      <span class="mini-competition">${esc(m.label)}</span>
+    const upcoming=m.id===next?.id;
+    return `<div class="result-row tug-fixture${upcoming?" next-match":""}">
+      <span class="mini-competition">${esc(m.label)}${upcoming?' ・ 次の試合':""}</span>
       <div class="versus">${esc(m.labelA)} <span class="tug-versus">vs</span> ${esc(m.labelB)}</div>
       <span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>
       ${winner?`<span class="tug-winner">勝利：${esc(winner)}</span>`:""}
@@ -94,6 +98,7 @@ function renderBracket(data){
   const league=buildRoundRobin(data,state.sport);
   if(!league)return section("対戦表",null,`<div class="empty">競技を選択してください。</div>`);
   const cells=buildRoundRobinMatrix(league,data.teams);
+  const next=nextPendingMatch(league.all);
   const headings=data.teams.map(t=>
     `<th scope="col" class="matrix-team-heading" title="${esc(t.name)}">${esc(t.name)}</th>`).join("");
   const body=cells.map((row,i)=>{
@@ -104,8 +109,9 @@ function renderBracket(data){
       const opponent=data.teams[j];
       const m=cell.match;
       const detail=[m?formatMatchLabel(m):"対戦情報なし",m?.court,m?.scheduledAt,cell.kind==="invalid"?m?.issue:""].filter(Boolean).join(" ／ ");
-      const label=`${team.name} 対 ${opponent.name}：${cell.text}（${detail}）`;
-      return `<td class="matrix-result matrix-${cell.kind}" aria-label="${esc(label)}" title="${esc(detail)}">
+      const upcoming=m?.id===next?.id;
+      const label=`${team.name} 対 ${opponent.name}：${upcoming?"次の試合・":""}${cell.text}（${detail}）`;
+      return `<td class="matrix-result matrix-${cell.kind}${upcoming?" matrix-next":""}" aria-label="${esc(label)}" title="${esc(detail)}">
         <span class="matrix-result__main">${esc(cell.text)}</span><span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
     }).join("");
     return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
@@ -115,11 +121,12 @@ function renderBracket(data){
       <thead><tr><th class="matrix-corner matrix-diagonal" scope="col" aria-label="縦軸は自チーム、横軸は対戦相手"><span class="matrix-visually-hidden">縦：自チーム、横：対戦相手</span></th>${headings}</tr></thead>
       <tbody>${body}</tbody>
     </table></div>
-    <p class="matrix-help">縦のチームから見た対戦結果を表示します。斜線は同じチーム同士の対戦なしを表します。</p>
+    <p class="matrix-help">縦のチームから見た対戦結果を表示します。水色は次の試合、斜線は同じチーム同士の対戦なしを表します。</p>
     <div class="matrix-legend" aria-label="対戦結果の凡例">
       <span class="matrix-legend__item"><i class="matrix-win"></i>勝</span>
       <span class="matrix-legend__item"><i class="matrix-loss"></i>敗</span>
       <span class="matrix-legend__item"><i class="matrix-pending"></i>未開始</span>
+      <span class="matrix-legend__item"><i class="matrix-next"></i>次の試合</span>
       <span class="matrix-legend__item"><i class="matrix-live"></i>試合中</span>
       <span class="matrix-legend__item"><i class="matrix-invalid"></i>要確認</span>
     </div>`;
