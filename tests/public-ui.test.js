@@ -112,3 +112,11 @@ test("light blue is explicitly applied to the matrix and next event cards",()=>{
   assert.match(css,/td\.matrix-next\{background:#c9efff/);
   assert.match(css,/\.result-row\.next-match,\.borrowed-heat\.next-match\{background:#c9efff/);
 });
+
+test("menu shows latest merged PR number in its lower right",async t=>{
+  const page=await setup();t.after(page.close);
+  page.document.querySelector("#menuButton").click();
+  const pr=page.document.querySelector("#appMenu .menu-pr-number");
+  assert.equal(pr.textContent.trim(),"PR #18");
+  assert.match(css,/\.menu-pr-number\{display:block;text-align:right/);
+});

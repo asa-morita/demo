@@ -15,6 +15,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .menu-links .menu-admin-link{display:flex;align-items:center;min-height:46px;margin-top:8px;padding:10px 13px;border:1px solid #111;border-radius:9px;background:#111;color:#fff;font-size:15px;font-weight:800;text-align:left;text-decoration:none}
 .menu-links .menu-admin-link:hover{background:#333}
 .menu-note{font-size:12px;color:var(--muted);margin:14px 3px 2px}
+.menu-pr-number{display:block;text-align:right;margin:8px 3px 0;color:#89919a;font-size:10px;font-weight:500}
 .page-container{max-width:1120px;margin:auto;padding:calc(var(--header) + 24px) 16px 20px}
 .page-intro{margin:0 2px 16px}.eyebrow{font-size:11px;letter-spacing:.15em;font-weight:800;color:#6d737a}h1{font-size:clamp(25px,4.8vw,34px);line-height:1.3;margin:5px 0 5px;display:flex;align-items:center;gap:10px}h1:before{content:"";width:7px;height:32px;background:var(--yellow);border-radius:999px;display:inline-block}
 .intro-desc{font-size:14px;margin:0;color:var(--muted)}.connection{min-height:42px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 14px;display:flex;gap:7px;align-items:center;font-size:12px;font-weight:700}
