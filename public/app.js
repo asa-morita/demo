@@ -24,12 +24,6 @@ function renderSchedule(data) {
       <div class="schedule-item__place">${s.venue?`会場：${esc(s.venue)} ／ `:""}${esc(description)}</div></div>
     </li>`;
   }).join("");
-  const firstHeadToHead=data.sports.find(s=>s.id!=="borrowed");
-  const league=firstHeadToHead?buildRoundRobin(data,firstHeadToHead.id):null;
-  const fixtureRows=league?
-    `<div class="results-group"><div class="results-list">${league.all.map(m=>
-    `<div class="result-row"><span class="mini-competition">${esc(formatMatchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`:"";
-  const names=data.teams.map(t=>esc(t.name)).join(" ／ ");
   const allTimed=data.sports.length>0&&data.sports.every(s=>validClock(s.startTime)&&validClock(s.endTime));
   const notice=allTimed?"時間は運営が管理画面から登録した内容です。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営の管理画面から登録されます。";
   return section("開催予定","体育祭の全体開催時間です。",
@@ -40,10 +34,7 @@ function renderSchedule(data) {
     </div>
     <div class="section-row"><h2>実施競技</h2><span class="minor">全${data.sports.length}競技</span></div>
     <ol class="schedule-list" style="margin-top:14px">${rows}</ol>
-    <p class="schedule-caveat">${esc(notice)}</p>`)+
-    section("2チーム対抗競技の総当たり組み合わせ",
-      `参加チーム：${names} ／ 各チーム3戦・全6試合（綱引きを含む）`,
-      fixtureRows+`<p class="point-note">借人競争はこの組み合わせを使わず、4チームで4回競います。各回の順位は「対戦表」から確認できます。試合ごとの開始時刻・会場は運営の記録を優先します。</p>`);
+    <p class="schedule-caveat">${esc(notice)}</p>`);
 }
 function renderBorrowed(data){
   const race=buildBorrowed(data);
