@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed,formatOverallPoints} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed,formatOverallPoints,formatMatchLabel} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
@@ -24,6 +24,26 @@ test("five sports including tug-of-war use 3 rounds with two matches; borrowed r
   assert.equal(buildRoundRobin(d,"borrowed"),null);
   assert.equal(buildBorrowed(d).all.length,4);
   assert.equal(d.heats.length,4);
+});
+test("fixture order starts A vs B, allows rest, and keeps stored match IDs",()=>{
+  const league=buildRoundRobin(fresh(),"futsal");
+  assert.deepEqual(league.all.map(m=>[m.id,m.teamA,m.teamB]),[
+    ["R3M1","A","B"],["R3M2","C","D"],
+    ["R2M1","A","C"],["R2M2","D","B"],
+    ["R1M1","A","D"],["R1M2","B","C"]
+  ]);
+  assert.deepEqual(league.all.map(formatMatchLabel),
+    ["第1試合","第2試合","第3試合","第4試合","第5試合","第6試合"]);
+  assert.equal(formatMatchLabel("R1M1"),"第5試合");
+  // K4's six fixtures cannot have fewer than two shared-team adjacent pairs.
+  const adjacent=league.all.slice(1).filter((m,i)=>{
+    const prev=league.all[i];
+    return m.teamA===prev.teamA||m.teamA===prev.teamB||
+      m.teamB===prev.teamA||m.teamB===prev.teamB;
+  });
+  assert.equal(adjacent.length,2);
+  assert.equal(league.all[0].teamA,"A");
+  assert.equal(league.all[0].teamB,"B");
 });
 test("a completed round robin ranks teams by wins and awards podium points",()=>{
   const d=fresh(),league=buildRoundRobin(d,"volleyball");
@@ -65,31 +85,31 @@ test("wrong opponents, winner, and duplicate IDs do not award points",()=>{
   const d=fresh();
   match(d,"volleyball","R1M1").teamB="B";
   let b=buildRoundRobin(d,"volleyball");
-  assert.equal(b.all[0].status,"要確認");
+  assert.equal(b.all.find(m=>m.id==="R1M1").status,"要確認");
   assert.equal(b.completed,false);
   match(d,"volleyball","R1M1").teamB="D";
   match(d,"volleyball","R1M1").winnerId="Z";
   b=buildRoundRobin(d,"volleyball");
-  assert.match(b.all[0].issue,/勝者ID/);
+  assert.match(b.all.find(m=>m.id==="R1M1").issue,/勝者ID/);
   match(d,"volleyball","R1M1").winnerId="A";
   d.matches.push({...match(d,"volleyball","R1M1")});
-  assert.match(buildRoundRobin(d,"volleyball").all[0].issue,/重複/);
+  assert.match(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").issue,/重複/);
 });
 test("wins are accepted only for finished games",()=>{
   const d=fresh(),game=match(d,"volleyball","R1M1");
   game.status="試合中";
-  assert.equal(buildRoundRobin(d,"volleyball").all[0].status,"要確認");
+  assert.equal(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").status,"要確認");
   game.winnerId="";
-  assert.equal(buildRoundRobin(d,"volleyball").all[0].status,"試合中");
-  assert.equal(buildRoundRobin(d,"volleyball").all[0].winner,null);
+  assert.equal(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").status,"試合中");
+  assert.equal(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").winner,null);
 });
 test("score columns are optional and can infer a winner for legacy data",()=>{
   const d=fresh(),game=match(d,"volleyball","R1M1");
   game.winnerId="";
   game.scoreA=3;game.scoreB=1;
-  assert.equal(buildRoundRobin(d,"volleyball").all[0].winner,"A");
+  assert.equal(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").winner,"A");
   game.scoreB=3;
-  assert.match(buildRoundRobin(d,"volleyball").all[0].issue,/引き分け不可/);
+  assert.match(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").issue,/引き分け不可/);
 });
 test("missing team or incomplete matches never produce an overall award",()=>{
   const d=fresh();
@@ -124,6 +144,9 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.match(html,/総合順位/);
   assert.doesNotMatch(html,/data-tab="news"|data-tab="results"/);
   assert.match(app,/2チーム対抗競技の総当たり組み合わせ/);
+  assert.match(app,/league\.all\.map\(m=>/);
+  assert.match(app,/formatMatchLabel\(m\)/);
+  assert.doesNotMatch(app,/第[123]節|\.rounds\.map/);
   assert.match(app,/const titles=\{schedule:\["予定"/);
   assert.doesNotMatch(app,/renderNews|renderResults/);
 });
