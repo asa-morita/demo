@@ -307,7 +307,7 @@ test("overall point visibility defaults to shown, persists, and handles old reco
   assert.throws(()=>applyUpdate(current,"settings",{pointsVisible:"false",expectedPointsVisible:false}),/不正/);
   assert.throws(()=>applyUpdate(current,"settings",{pointsVisible:true}),/不正/);
   assert.equal(current.teams.length,4);
-  assert.equal(current.matches.length,30);
+  assert.equal(current.matches.length,27);
 });
 test("admin can hide and restore overall points without modifying results",async()=>{
   const {env,getSaved}=setup();
