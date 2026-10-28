@@ -1,4 +1,4 @@
-// Four-team head-to-head games (including tug-of-war): each team plays three matches.
+// Four-team individual head-to-head games: each team plays three matches.
 // Legacy round IDs remain stable for saved results; the chronological display order is below.
 // Borrowed-person race is different: four heats with all four teams competing each time.
 export const ROUNDS = Object.freeze([
@@ -53,7 +53,7 @@ export function normalizeData(input) {
 
 export function buildRoundRobin(data,sportId) {
   const sport=data.sports.find(s=>s.id===sportId);
-  if(!sport||sport.id==="borrowed")return null;
+  if(!sport||sport.id==="borrowed"||sport.id==="tugofwar")return null;
   const teams=data.teams;
   const names=new Map(teams.map(t=>[t.id,t.name||t.id]));
   const rows=data.matches.filter(m=>m.sportId===sportId);
@@ -147,6 +147,62 @@ export function buildRoundRobinMatrix(league,teams) {
 }
 
 
+
+// Tug-of-war is three matches between two temporary two-team alliances.
+// IDs T1-T3 deliberately differ from legacy individual head-to-head match IDs.
+export const TUG_FIXTURES=Object.freeze([
+  {id:"T1",sideA:[0,1],sideB:[2,3]}, // AB vs CD
+  {id:"T2",sideA:[0,2],sideB:[1,3]}, // AC vs BD
+  {id:"T3",sideA:[0,3],sideB:[1,2]}  // AD vs BC
+]);
+export function createTugMatches(teams){
+  return TUG_FIXTURES.map(f=>({
+    sportId:"tugofwar",id:f.id,
+    teamA:f.sideA.map(i=>teams[i]?.id||"").join("+"),
+    teamB:f.sideB.map(i=>teams[i]?.id||"").join("+"),
+    scoreA:null,scoreB:null,status:"未開始",winnerId:"",court:"",scheduledAt:""
+  }));
+}
+export function buildTugOfWar(data){
+  const sport=data.sports.find(s=>s.id==="tugofwar");
+  if(!sport)return null;
+  const teams=data.teams,unique=teams.length===4&&new Set(teams.map(t=>t.id)).size===4;
+  const existing=(data.matches||[]).filter(m=>m.sportId==="tugofwar");
+  const all=TUG_FIXTURES.map((fixture,index)=>{
+    const entries=existing.filter(m=>m.id===fixture.id);
+    const row=entries[0]||{};
+    const sideA=fixture.sideA.map(i=>teams[i]?.id).filter(Boolean);
+    const sideB=fixture.sideB.map(i=>teams[i]?.id).filter(Boolean);
+    const teamA=sideA.join("+"),teamB=sideB.join("+");
+    const teamName=id=>teams.find(t=>t.id===id)?.name||id;
+    let issue="";
+    if(!unique)issue="参加チームは4件必要です";
+    else if(entries.length!==1)issue=entries.length>1?"試合IDが重複しています":"試合情報がありません";
+    else if(row.teamA!==teamA||row.teamB!==teamB)issue="登録チームが対戦予定と一致しません";
+    else if(!["未開始","試合中","終了"].includes(row.status))issue="試合状態が不正です";
+    else if(row.status!=="終了"&&row.winnerId)issue="試合終了前に勝者IDが登録されています";
+    else if(row.status==="終了"&&![teamA,teamB].includes(row.winnerId))issue="勝者の組が未登録または不正です";
+    return {
+      id:fixture.id,label:"第"+(index+1)+"試合",sideA,sideB,teamA,teamB,
+      labelA:sideA.map(teamName).join("＋"),labelB:sideB.map(teamName).join("＋"),
+      status:issue?"要確認":row.status||"未開始",issue,
+      winner:issue?null:(row.status==="終了"?row.winnerId:null),
+      court:row.court||"",scheduledAt:row.scheduledAt||""
+    };
+  });
+  const standings=teams.map(team=>{
+    const completedGames=all.filter(m=>m.winner&&([ ...m.sideA,...m.sideB].includes(team.id)));
+    return {id:team.id,name:team.name||team.id,played:completedGames.length,
+      wins:completedGames.filter(m=>(m.winner===m.teamA?m.sideA:m.sideB).includes(team.id)).length,
+      losses:completedGames.filter(m=>(m.winner===m.teamA?m.sideB:m.sideA).includes(team.id)).length,
+      rank:null};
+  }).sort((a,b)=>b.wins-a.wins||a.name.localeCompare(b.name,"ja"));
+  // Shared alliances mean there is no individual direct head-to-head tiebreak.
+  standings.forEach((r,i)=>{r.rank=i&&r.wins===standings[i-1].wins?standings[i-1].rank:i+1});
+  const completed=unique&&all.every(m=>m.winner&&!m.issue);
+  return {sport,all,standings,completed,ranks:completed?standings.map(r=>({teamId:r.id,rank:r.rank})):[]};
+}
+
 // Four four-team heats; sum of placing positions (lower is better).
 // No podium points are given to the sport until all four heats are valid and finished.
 export const BORROWED_HEAT_IDS=Object.freeze(["H1","H2","H3","H4"]);
@@ -201,7 +257,7 @@ export function computeOverall(data) {
   let completedSports=0;
   const sportsSummary=[];
   for(const sport of data.sports){
-    const league=sport.id==="borrowed"?buildBorrowed(data):buildRoundRobin(data,sport.id);
+    const league=sport.id==="borrowed"?buildBorrowed(data):sport.id==="tugofwar"?buildTugOfWar(data):buildRoundRobin(data,sport.id);
     sportsSummary.push({name:sport.name,completed:league.completed});
     if(!league.completed)continue;
     completedSports++;
