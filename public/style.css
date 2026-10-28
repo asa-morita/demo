@@ -89,6 +89,9 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .round-robin-table .matrix-pending{background:#fff;color:#64707c}
 .round-robin-table .matrix-live{background:#ddf6e7;color:#16623c}
 .round-robin-table .matrix-invalid{background:#fff0e6;color:#a94412}
+/* Upcoming fixture overrides the ordinary pending cell for both symmetric matrix entries. */
+.round-robin-table td.matrix-next{background:#c9efff;color:#07516f;box-shadow:inset 0 0 0 2px #4baad4}
+
 .matrix-help{font-size:12px;color:#606a75;margin:12px 0 4px}
 .matrix-legend{display:flex;flex-wrap:wrap;gap:8px 15px;margin-top:12px;font-size:12px;color:#48515c}
 .matrix-legend__item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -96,6 +99,8 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .matrix-legend__item .matrix-win{background:#fff0a6}
 .matrix-legend__item .matrix-loss{background:#f0f2f4}
 .matrix-legend__item .matrix-pending{background:#fff}
+.matrix-legend__item .matrix-next{background:#c9efff;border-color:#4baad4}
+
 .matrix-legend__item .matrix-live{background:#ddf6e7}
 .matrix-legend__item .matrix-invalid{background:#fff0e6}
 .matrix-visually-hidden{position:absolute!important;clip:rect(0,0,0,0);clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
@@ -121,3 +126,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .tug-fixture .tug-versus{font-weight:500;color:var(--muted);margin:0 .2em}
 .tug-fixture .tug-winner{font-size:12px;font-weight:800;width:100%}
 .tug-fixture .muted,.tug-fixture .problem-text{margin:0;width:100%}
+
+/* Next match or heat outside the round-robin matrix. */
+.result-row.next-match,.borrowed-heat.next-match{background:#c9efff;border-color:#4baad4;box-shadow:inset 0 0 0 1px #4baad4}
+.next-match-label{font-size:11px;font-weight:800;color:#07516f}
