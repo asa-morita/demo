@@ -181,8 +181,6 @@ function renderMatches(){
       '<label>試合状態<select name="status" required>'+statusOptions+'</select></label>'+
       '<label>勝者<select name="winnerId"'+(status!=="終了"?' disabled':'')+'>'+
         winnerOptions(match,winner)+'</select></label>'+
-      '<label>コート<input name="court" maxlength="80" value="'+escapeHTML(row?.court||"")+'"></label>'+
-      '<label>開始予定<input name="scheduledAt" maxlength="80" value="'+escapeHTML(row?.scheduledAt||"")+'" placeholder="例：13:30"></label>'+
       '</div><button class="primary save" type="submit">この試合を保存</button></form>';
   }).join("")||'<div class="panel empty-state">該当する試合はありません。全試合が終了している場合は、絞り込みを解除してください。</div>';
 }
@@ -428,7 +426,7 @@ $("matchList").addEventListener("submit",async event=>{
   }
   await save(form,"match",{
     sportId:matchSportId,matchId:row.id,status,winnerId,
-    court:field("court"),scheduledAt:field("scheduledAt"),
+    court:row.court||"",scheduledAt:row.scheduledAt||"",
     expectedStatus:row.status,expectedWinnerId:row.winnerId,
     expectedCourt:row.court,expectedScheduledAt:row.scheduledAt
   },"試合結果を保存しました。公開画面に数秒以内に反映されます。");
