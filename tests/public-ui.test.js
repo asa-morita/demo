@@ -42,6 +42,7 @@ test("next head-to-head match highlights two mirrored light-blue cells and advan
   page.selectSport("basketball");
   const cells=()=>[...page.document.querySelectorAll("#view td.matrix-next")];
   assert.equal(cells().length,2);
+  assert.equal(cells().every(cell=>cell.querySelector(".matrix-result__main").textContent==="次の試合"),true);
   assert.equal(cells().every(cell=>cell.getAttribute("title").includes("第1試合")),true);
   assert.equal(cells().every(cell=>cell.getAttribute("aria-label").includes("次の試合")),true);
   assert.match(page.document.querySelector(".matrix-help").textContent,/水色/);
