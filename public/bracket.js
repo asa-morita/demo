@@ -17,6 +17,11 @@ export const FIXTURES = Object.freeze([
   {id:"R1M1", round:"R1", a:0, b:3}, // 第5試合: A vs D
   {id:"R1M2", round:"R1", a:1, b:2}  // 第6試合: B vs C
 ]);
+// The next event is the first unstarted fixture in the configured order.
+// Ignore completed, live and invalid records; none is highlighted when no match remains.
+export function nextPendingMatch(items){
+  return (items||[]).find(item=>item.status==="未開始")||null;
+}
 export function formatMatchLabel(match) {
   const id=typeof match==="string"?match:match?.id;
   const index=FIXTURES.findIndex(f=>f.id===id);
