@@ -358,6 +358,103 @@
     },
     {
       "sportId": "tugofwar",
+      "id": "T1",
+      "teamA": "A+B",
+      "teamB": "C+D",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "tugofwar",
+      "id": "T2",
+      "teamA": "A+C",
+      "teamB": "B+D",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "tugofwar",
+      "id": "T3",
+      "teamA": "A+D",
+      "teamB": "B+C",
+      "scoreA": null,
+      "scoreB": null,
+      "status": "未開始",
+      "winnerId": "",
+      "court": "",
+      "scheduledAt": ""
+    }
+  ],
+  "points": {
+    "1": 30,
+    "2": 20,
+    "3": 10
+  },
+  "source": "demo",
+  "updatedAt": "",
+  "heats": [
+    {
+      "sportId": "borrowed",
+      "id": "H1",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H2",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H3",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    },
+    {
+      "sportId": "borrowed",
+      "id": "H4",
+      "status": "未開始",
+      "ranks": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+      },
+      "scheduledAt": ""
+    }
+  ],
+  "pointsVisible": true,
+  "sportsOrderVersion": 1,
+  "legacyTugMatches": [
+    {
+      "sportId": "tugofwar",
       "id": "R1M1",
       "teamA": "A",
       "teamB": "D",
@@ -429,63 +526,5 @@
       "scheduledAt": ""
     }
   ],
-  "points": {
-    "1": 30,
-    "2": 20,
-    "3": 10
-  },
-  "source": "demo",
-  "updatedAt": "",
-  "heats": [
-    {
-      "sportId": "borrowed",
-      "id": "H1",
-      "status": "未開始",
-      "ranks": {
-        "A": 0,
-        "B": 0,
-        "C": 0,
-        "D": 0
-      },
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "H2",
-      "status": "未開始",
-      "ranks": {
-        "A": 0,
-        "B": 0,
-        "C": 0,
-        "D": 0
-      },
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "H3",
-      "status": "未開始",
-      "ranks": {
-        "A": 0,
-        "B": 0,
-        "C": 0,
-        "D": 0
-      },
-      "scheduledAt": ""
-    },
-    {
-      "sportId": "borrowed",
-      "id": "H4",
-      "status": "未開始",
-      "ranks": {
-        "A": 0,
-        "B": 0,
-        "C": 0,
-        "D": 0
-      },
-      "scheduledAt": ""
-    }
-  ],
-  "pointsVisible": true,
-  "sportsOrderVersion": 1
+  "tugFormatVersion": 1
 }
