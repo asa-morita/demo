@@ -19,17 +19,9 @@
   ],
   "sports": [
     {
-      "id": "futsal",
-      "name": "フットサル",
-      "order": 1,
-      "startTime": "",
-      "endTime": "",
-      "venue": ""
-    },
-    {
       "id": "volleyball",
       "name": "バレーボール",
-      "order": 2,
+      "order": 1,
       "startTime": "",
       "endTime": "",
       "venue": ""
@@ -37,6 +29,14 @@
     {
       "id": "basketball",
       "name": "バスケットボール",
+      "order": 2,
+      "startTime": "",
+      "endTime": "",
+      "venue": ""
+    },
+    {
+      "id": "futsal",
+      "name": "フットサル",
       "order": 3,
       "startTime": "",
       "endTime": "",
@@ -44,7 +44,7 @@
     },
     {
       "id": "dodgeball",
-      "name": "ドッチボール",
+      "name": "ドッジボール",
       "order": 4,
       "startTime": "",
       "endTime": "",
@@ -486,5 +486,6 @@
       "scheduledAt": ""
     }
   ],
-  "pointsVisible": true
+  "pointsVisible": true,
+  "sportsOrderVersion": 1
 }

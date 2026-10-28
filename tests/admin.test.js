@@ -64,12 +64,41 @@ test("default store creates 4 teams, 6 sports, and unplayed fixtures",()=>{
   const data=createDefaultData();
   assert.equal(data.teams.length,4);
   assert.equal(data.sports.length,6);
+  assert.deepEqual(data.sports.map(s=>s.id),["volleyball","basketball","futsal","dodgeball","tugofwar","borrowed"]);
+  assert.deepEqual(data.sports.map(s=>s.order),[1,2,3,4,5,6]);
   assert.equal(data.matches.length,30);
   assert.equal(data.heats.length,4);
   assert.equal(data.matches.some(m=>m.sportId==="borrowed"),false);
   assert.equal(data.matches.every(m=>m.status==="未開始"&&m.winnerId===""),true);
   assert.equal(data.source,"admin");
 });
+test("legacy tournament schedules migrate once without resetting sports details or results",()=>{
+  const old=createDefaultData();
+  const byId=id=>old.sports.find(s=>s.id===id);
+  delete old.sportsOrderVersion;
+  byId("futsal").order=1;
+  byId("volleyball").order=2;
+  byId("basketball").order=3;
+  byId("dodgeball").name="ドッチボール";
+  byId("futsal").startTime="14:30";
+  byId("futsal").venue="アリーナ";
+  const match=savedMatch(old);
+  match.status="終了";match.winnerId="A";
+  const next=ensureHeats(old);
+  assert.deepEqual(next.sports.map(s=>[s.id,s.order]),[
+    ["volleyball",1],["basketball",2],["futsal",3],
+    ["dodgeball",4],["tugofwar",5],["borrowed",6]
+  ]);
+  assert.equal(next.sports.find(s=>s.id==="dodgeball").name,"ドッジボール");
+  assert.equal(next.sports.find(s=>s.id==="futsal").startTime,"14:30");
+  assert.equal(next.sports.find(s=>s.id==="futsal").venue,"アリーナ");
+  assert.equal(savedMatch(next).winnerId,"A");
+  assert.equal(next.sportsOrderVersion,1);
+  const manuallyChanged=structuredClone(next);
+  manuallyChanged.sports.find(s=>s.id==="basketball").order=9;
+  assert.equal(ensureHeats(manuallyChanged).sports.find(s=>s.id==="basketball").order,9);
+});
+
 test("match update checks winner, current version, and fixture",()=>{
   const data=createDefaultData();
   assert.throws(()=>applyUpdate(data,"match",{...initialMatch,winnerId:"B"}),/勝者/);
@@ -90,11 +119,11 @@ test("team and sport updates check constraints and stale versions",()=>{
   assert.throws(()=>applyUpdate(data,"team",{id:"A",name:"赤組",expectedName:"Aチーム"}),e=>e.conflict);
   const sport={
     id:"futsal",name:"フットサル男子",order:8,startTime:"13:00",endTime:"14:30",venue:"主体育館",
-    expectedName:"フットサル",expectedOrder:1,expectedStartTime:"",expectedEndTime:"",expectedVenue:""
+    expectedName:"フットサル",expectedOrder:3,expectedStartTime:"",expectedEndTime:"",expectedVenue:""
   };
   applyUpdate(data,"sport",sport);
-  assert.equal(data.sports[0].venue,"主体育館");
-  assert.equal(data.sports[0].order,8);
+  assert.equal(data.sports.find(s=>s.id==="futsal").venue,"主体育館");
+  assert.equal(data.sports.find(s=>s.id==="futsal").order,8);
   assert.throws(()=>applyUpdate(data,"sport",sport),e=>e.conflict);
   const bad=createDefaultData();
   assert.throws(()=>applyUpdate(bad,"sport",{...sport,endTime:"12:30"}),/終了時刻/);
@@ -124,7 +153,7 @@ test("worker stores team, sport and match edits and serves them publicly",async(
   assert.equal(team.status,200);
   const sport=await worker.fetch(request("/api/admin/sport","POST",{
     id:"futsal",name:"ミニサッカー",order:1,startTime:"12:45",endTime:"14:00",venue:"屋内",
-    expectedName:"フットサル",expectedOrder:1,expectedStartTime:"",expectedEndTime:"",expectedVenue:""
+    expectedName:"フットサル",expectedOrder:3,expectedStartTime:"",expectedEndTime:"",expectedVenue:""
   },base,cookie),env);
   assert.equal(sport.status,200);
   const match=await worker.fetch(request("/api/admin/match","POST",initialMatch,base,cookie),env);
@@ -133,7 +162,7 @@ test("worker stores team, sport and match edits and serves them publicly",async(
   assert.equal(conflict.status,409);
   const after=await (await worker.fetch(request("/api/results"),env)).json();
   assert.equal(after.teams[0].name,"青組");
-  assert.equal(after.sports[0].name,"ミニサッカー");
+  assert.equal(after.sports.find(s=>s.id==="futsal").name,"ミニサッカー");
   assert.equal(savedMatch(after).status,"終了");
   assert.equal(savedMatch(after).winnerId,"A");
   assert.ok(after.updatedAt);
