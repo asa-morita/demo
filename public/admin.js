@@ -1,4 +1,4 @@
-import {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildBorrowed,buildTugOfWar,formatMatchLabel} from "./bracket.js";
 
 const $=(id)=>document.getElementById(id);
 const escapeHTML=(value)=>String(value??"").replace(/[&<>"']/g,
@@ -126,9 +126,10 @@ function renderSport(){
 }
 function winnerOptions(match,selected){
   return '<option value="">未選択</option>'+
-    [match.teamA,match.teamB].map(id=>
+    [match.teamA,match.teamB].map((id,index)=>
       '<option value="'+escapeHTML(id)+'"'+(id===selected?' selected':'')+'>'+
-      escapeHTML(data.teams.find(t=>t.id===id)?.name||id)+'</option>'
+      escapeHTML(matchSportId==="tugofwar"?(index===0?match.labelA:match.labelB):
+        data.teams.find(t=>t.id===id)?.name||id)+'</option>'
     ).join("");
 }
 
@@ -155,7 +156,7 @@ function renderHeats(){
   }).join("");
 }
 function renderMatches(){
-  const league=buildRoundRobin(data,matchSportId);
+  const league=matchSportId==="tugofwar"?buildTugOfWar(data):buildRoundRobin(data,matchSportId);
   if(!league){$("matchList").replaceChildren();return}
   const completed=league.all.filter(match=>match.status==="終了").length;
   $("matchProgress").textContent="終了 "+completed+" / "+league.all.length+" 試合";
@@ -170,7 +171,7 @@ function renderMatches(){
       '<option value="'+value+'"'+(status===value?' selected':'')+'>'+value+'</option>'
     ).join("");
     return '<form class="match-editor" data-match-id="'+escapeHTML(match.id)+'">'+
-      '<div class="match-heading"><span>'+escapeHTML(formatMatchLabel(match))+
+      '<div class="match-heading"><span>'+escapeHTML(matchSportId==="tugofwar"?match.label:formatMatchLabel(match))+
       '</span><span class="match-state'+
       (match.status==="要確認"?' problem':'')+'">'+escapeHTML(match.status)+'</span></div>'+
       '<strong class="match-opponents">'+escapeHTML(match.labelA)+' <span>対</span> '+

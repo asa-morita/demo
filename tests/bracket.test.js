@@ -1,19 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,buildBorrowed,formatOverallPoints,formatMatchLabel} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,computeOverall,FIXTURES,TUG_FIXTURES,buildTugOfWar,buildBorrowed,formatOverallPoints,formatMatchLabel} from "../public/bracket.js";
 
 const sample=JSON.parse(readFileSync(new URL("../public/demo-data.json",import.meta.url),"utf8"));
 const fresh=()=>normalizeData(structuredClone(sample));
 const match=(d,sport,id)=>d.matches.find(m=>m.sportId===sport&&m.id===id);
 
-test("five sports including tug-of-war use 3 rounds with two matches; borrowed race uses four heats",()=>{
+test("four individual round-robin sports have six matches; borrowed race has four heats",()=>{
   const d=fresh();
   assert.deepEqual(d.teams.map(t=>t.id),["A","B","C","D"]);
   assert.equal(d.sports.length,6);
   assert.deepEqual(d.sports.map(x=>x.name),["バレーボール","バスケットボール","フットサル","ドッジボール","綱引き","借人競争"]);
   assert.equal(FIXTURES.length,6);
-  for(const s of d.sports.filter(s=>s.id!=="borrowed")){
+  for(const s of d.sports.filter(s=>s.id!=="borrowed"&&s.id!=="tugofwar")){
     const league=buildRoundRobin(d,s.id);
     assert.equal(league.rounds.length,3);
     assert.deepEqual(league.rounds.map(r=>r.matches.length),[2,2,2]);
@@ -22,8 +22,58 @@ test("five sports including tug-of-war use 3 rounds with two matches; borrowed r
     for(const t of d.teams)assert.equal(league.all.filter(m=>m.teamA===t.id||m.teamB===t.id).length,3);
   }
   assert.equal(buildRoundRobin(d,"borrowed"),null);
+  assert.equal(buildRoundRobin(d,"tugofwar"),null);
   assert.equal(buildBorrowed(d).all.length,4);
   assert.equal(d.heats.length,4);
+});
+test("tug-of-war pairs each team with every other team once across exactly three matches",()=>{
+  const d=fresh(),tug=buildTugOfWar(d);
+  assert.equal(TUG_FIXTURES.length,3);
+  assert.deepEqual(tug.all.map(m=>[m.id,m.teamA,m.teamB]),[
+    ["T1","A+B","C+D"],["T2","A+C","B+D"],["T3","A+D","B+C"]
+  ]);
+  for(const team of d.teams){
+    assert.equal(tug.all.filter(m=>[...m.sideA,...m.sideB].includes(team.id)).length,3);
+    assert.equal(tug.all.filter(m=>m.sideA.includes(team.id)).length+
+      tug.all.filter(m=>m.sideB.includes(team.id)).length,3);
+  }
+  assert.equal(tug.completed,false);
+  assert.equal(tug.ranks.length,0);
+  assert.equal(tug.all[0].label,"第1試合");
+});
+test("tug-of-war awards each allied team one victory and shares tied ranks only after all matches",()=>{
+  const d=fresh();
+  const winners={T1:"A+B",T2:"A+C",T3:"A+D"};
+  for(const [id,winnerId] of Object.entries(winners)){
+    Object.assign(match(d,"tugofwar",id),{status:"終了",winnerId});
+  }
+  const tug=buildTugOfWar(d);
+  assert.equal(tug.completed,true);
+  assert.deepEqual(tug.standings.map(t=>[t.id,t.wins,t.rank]),[
+    ["A",3,1],["B",1,2],["C",1,2],["D",1,2]
+  ]);
+  const overall=computeOverall(d);
+  assert.equal(overall.completedSports,2); // volleyball is already finished in the demo.
+  assert.deepEqual(Object.fromEntries(overall.rows.map(t=>[t.id,t.points])),{
+    A:50,B:20,C:50,D:30
+  });
+  match(d,"tugofwar","T3").status="未開始";
+  match(d,"tugofwar","T3").winnerId="";
+  assert.equal(buildTugOfWar(d).completed,false);
+  assert.equal(computeOverall(d).completedSports,1);
+});
+test("invalid tug results never count toward finished matches",()=>{
+  const d=fresh();
+  const m=match(d,"tugofwar","T1");
+  m.status="終了";m.winnerId="A";
+  assert.equal(buildTugOfWar(d).all[0].status,"要確認");
+  m.winnerId="A+B";
+  assert.equal(buildTugOfWar(d).all[0].winner,"A+B");
+  m.teamA="B+A";
+  assert.equal(buildTugOfWar(d).all[0].status,"要確認");
+  m.teamA="A+B";
+  d.matches.push({...m});
+  assert.match(buildTugOfWar(d).all[0].issue,/重複/);
 });
 test("fixture order starts A vs B, allows rest, and keeps stored match IDs",()=>{
   const league=buildRoundRobin(fresh(),"futsal");
@@ -147,6 +197,8 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.match(app,/section\("開催予定"/);
   assert.doesNotMatch(app,/2チーム対抗競技の総当たり組み合わせ|fixtureRows/);
   assert.match(app,/formatMatchLabel\(m\)/);
+  assert.match(app,/renderTugOfWar\(data\)/);
+  assert.match(app,/buildTugOfWar\(data\)/);
   assert.doesNotMatch(app,/第[123]節|\.rounds\.map/);
   assert.match(app,/const titles=\{schedule:\["予定"/);
   assert.doesNotMatch(app,/renderNews|renderResults/);

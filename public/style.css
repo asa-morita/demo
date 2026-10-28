@@ -113,3 +113,11 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .borrowed-place strong{overflow-wrap:anywhere}
 .borrowed-place span{font-weight:850;white-space:nowrap}
 @media(max-width:680px){.borrowed-heats{grid-template-columns:1fr}}
+
+/* Three alliance-based tug-of-war match cards. */
+.tug-fixture{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+.tug-fixture .versus{flex:1 1 100%;line-height:1.5;font-size:clamp(12px,3.5vw,15px);overflow-wrap:anywhere}
+.tug-fixture .mini-competition{width:auto;margin-right:auto}
+.tug-fixture .tug-versus{font-weight:500;color:var(--muted);margin:0 .2em}
+.tug-fixture .tug-winner{font-size:12px;font-weight:800;width:100%}
+.tug-fixture .muted,.tug-fixture .problem-text{margin:0;width:100%}

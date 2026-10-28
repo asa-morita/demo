@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {JSDOM} from "jsdom";
-import {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildBorrowed,buildTugOfWar,formatMatchLabel} from "../public/bracket.js";
 import {TournamentStore} from "../src/store.js";
 import worker from "../src/worker.js";
 
@@ -10,7 +10,7 @@ const base="http://localhost:8787";
 const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
 const script=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8")
   .replace(/^import \{[^}]+\} from "\.\/bracket\.js";/m,
-    "const {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel}=window.__bracket;");
+    "const {normalizeData,buildRoundRobin,buildBorrowed,buildTugOfWar,formatMatchLabel}=window.__bracket;");
 const tick=()=>new Promise(resolve=>setTimeout(resolve,8));
 async function settle(){for(let i=0;i<4;i++)await tick()}
 async function waitFor(check,label="状態の更新"){
@@ -41,7 +41,7 @@ async function setup(){
   const {window}=dom;
   window.scrollTo=()=>{window.__scrollCount=(window.__scrollCount||0)+1};
   window.confirm=()=>true;
-  window.__bracket={normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel};
+  window.__bracket={normalizeData,buildRoundRobin,buildBorrowed,buildTugOfWar,formatMatchLabel};
   let cookie="";
   window.fetch=async(url,options={})=>{
     const method=options.method||"GET";
@@ -122,14 +122,19 @@ test("tug-of-war fixtures, team names, timetable and points toggle remain editab
   const ctx=await setup();t.after(ctx.close);
   const {document,window}=ctx;
   change(window,document.querySelector("#matchSportSelect"),"tugofwar");
-  assert.equal(document.querySelectorAll("#matchList form[data-match-id]").length,6);
-  let form=document.querySelector("#matchList form[data-match-id=R1M1]");
+  assert.equal(document.querySelectorAll("#matchList form[data-match-id]").length,3);
+  assert.deepEqual([...document.querySelectorAll("#matchList form")].map(e=>e.dataset.matchId),["T1","T2","T3"]);
+  let form=document.querySelector("#matchList form[data-match-id=T1]");
   assert.match(form.textContent,/Aチーム/);
+  assert.match(form.textContent,/Bチーム/);
+  assert.match(form.textContent,/Cチーム/);
   assert.match(form.textContent,/Dチーム/);
+  const winners=[...form.elements.namedItem("winnerId").options].map(o=>o.value);
+  assert.deepEqual(winners,["","A+B","C+D"]);
   change(window,form.elements.namedItem("status"),"終了");
-  change(window,form.elements.namedItem("winnerId"),"A");
+  change(window,form.elements.namedItem("winnerId"),"A+B");
   submit(window,form);
-  await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId==="tugofwar"&&m.id==="R1M1")?.winnerId==="A","綱引きの結果保存");
+  await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1")?.winnerId==="A+B","綱引きの結果保存");
   document.querySelector('[data-admin-tab="sports"]').click();
   change(window,document.querySelector("#sportSelect"),"tugofwar");
   form=document.querySelector("#sportForm");
