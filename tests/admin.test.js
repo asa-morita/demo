@@ -66,7 +66,11 @@ test("default store creates 4 teams, 6 sports, and unplayed fixtures",()=>{
   assert.equal(data.sports.length,6);
   assert.deepEqual(data.sports.map(s=>s.id),["volleyball","basketball","futsal","dodgeball","tugofwar","borrowed"]);
   assert.deepEqual(data.sports.map(s=>s.order),[1,2,3,4,5,6]);
-  assert.equal(data.matches.length,30);
+  assert.equal(data.matches.length,27);
+  assert.equal(data.matches.filter(m=>m.sportId==="tugofwar").length,3);
+  assert.deepEqual(data.matches.filter(m=>m.sportId==="tugofwar").map(m=>[m.id,m.teamA,m.teamB]),[
+    ["T1","A+B","C+D"],["T2","A+C","B+D"],["T3","A+D","B+C"]
+  ]);
   assert.equal(data.heats.length,4);
   assert.equal(data.matches.some(m=>m.sportId==="borrowed"),false);
   assert.equal(data.matches.every(m=>m.status==="未開始"&&m.winnerId===""),true);
@@ -97,6 +101,56 @@ test("legacy tournament schedules migrate once without resetting sports details 
   const manuallyChanged=structuredClone(next);
   manuallyChanged.sports.find(s=>s.id==="basketball").order=9;
   assert.equal(ensureHeats(manuallyChanged).sports.find(s=>s.id==="basketball").order,9);
+});
+
+test("legacy tug-of-war records migrate to three new alliance fixtures without altering other sports",()=>{
+  const old=createDefaultData();
+  delete old.tugFormatVersion;
+  const futsal=savedMatch(old);
+  futsal.status="終了";futsal.winnerId="A";
+  const ancient=[
+    {sportId:"tugofwar",id:"R1M1",teamA:"A",teamB:"D",status:"終了",winnerId:"A",court:"",scheduledAt:"13:00"},
+    {sportId:"tugofwar",id:"R1M2",teamA:"B",teamB:"C",status:"未開始",winnerId:"",court:"",scheduledAt:""}
+  ];
+  old.matches=old.matches.filter(m=>m.sportId!=="tugofwar").concat(ancient);
+  const next=ensureHeats(old);
+  assert.equal(next.tugFormatVersion,1);
+  assert.deepEqual(next.legacyTugMatches,ancient);
+  assert.deepEqual(next.matches.filter(m=>m.sportId==="tugofwar").map(m=>m.id),["T1","T2","T3"]);
+  assert.equal(savedMatch(next).winnerId,"A");
+  next.matches.find(m=>m.id==="T1"&&m.sportId==="tugofwar").winnerId="A+B";
+  const upgraded=ensureHeats(next);
+  assert.equal(upgraded.matches.find(m=>m.id==="T1"&&m.sportId==="tugofwar").winnerId,"A+B");
+  assert.equal(upgraded.legacyTugMatches.length,2);
+});
+
+test("tug-of-war update only accepts winning two-team alliances",()=>{
+  const data=createDefaultData();
+  const payload={
+    sportId:"tugofwar",matchId:"T1",status:"終了",winnerId:"A+B",
+    court:"北側",scheduledAt:"16:00",expectedStatus:"未開始",
+    expectedWinnerId:"",expectedCourt:"",expectedScheduledAt:""
+  };
+  assert.throws(()=>applyUpdate(data,"match",{...payload,winnerId:"A"}),/勝者/);
+  assert.throws(()=>applyUpdate(data,"match",{...payload,winnerId:"A+C"}),/勝者/);
+  assert.throws(()=>applyUpdate(data,"match",{...payload,matchId:"R3M1"}),/対戦カード/);
+  assert.deepEqual(applyUpdate(data,"match",payload),{
+    sportId:"tugofwar",matchId:"T1",status:"終了",winnerId:"A+B"
+  });
+  assert.equal(savedMatch(data,"T1","tugofwar").court,"北側");
+  assert.throws(()=>applyUpdate(data,"match",payload),e=>e.conflict===true);
+});
+
+test("authenticated worker saves tug results and uses the new three-match schema",async()=>{
+  const {env}=setup();const cookie=await login(env);
+  const payload={sportId:"tugofwar",matchId:"T2",status:"終了",winnerId:"B+D",court:"",
+    scheduledAt:"",expectedStatus:"未開始",expectedWinnerId:"",expectedCourt:"",expectedScheduledAt:""};
+  const saved=await worker.fetch(request("/api/admin/match","POST",payload,base,cookie),env);
+  assert.equal(saved.status,200);
+  const results=await (await worker.fetch(request("/api/results"),env)).json();
+  assert.equal(results.matches.filter(m=>m.sportId==="tugofwar").length,3);
+  assert.equal(savedMatch(results,"T2","tugofwar").winnerId,"B+D");
+  assert.equal((await worker.fetch(request("/api/admin/match","POST",payload,base,cookie),env)).status,409);
 });
 
 test("match update checks winner, current version, and fixture",()=>{
