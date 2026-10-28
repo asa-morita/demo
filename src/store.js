@@ -6,11 +6,14 @@ const error=(message,conflict=false)=>{
   e[conflict?"conflict":"validation"]=true;
   return e;
 };
+// Increment on one-time published event order changes, never to override later admin edits.
+const SPORTS_ORDER_VERSION=1;
+const FIRST_FOUR_SPORTS=["volleyball","basketball","futsal","dodgeball"];
 const sportsSeed=[
-  ["futsal","フットサル"],
   ["volleyball","バレーボール"],
   ["basketball","バスケットボール"],
-  ["dodgeball","ドッチボール"],
+  ["futsal","フットサル"],
+  ["dodgeball","ドッジボール"],
   ["tugofwar","綱引き"],
   ["borrowed","借人競争"]
 ];
@@ -25,15 +28,22 @@ export function createDefaultData(){
     teamA:teams[fixture.a].id,teamB:teams[fixture.b].id,
     scoreA:null,scoreB:null,status:"未開始",winnerId:"",court:"",scheduledAt:""
   })));
-  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},pointsVisible:true,source:"admin",updatedAt:""};
+  return {teams,sports,matches,heats:createBorrowedHeats(teams),points:{...PODIUM_POINTS},pointsVisible:true,sportsOrderVersion:SPORTS_ORDER_VERSION,source:"admin",updatedAt:""};
 }
 
-// Old Durable Object records have borrowed-race head-to-head rows instead of heats.
-// Add the new field without overwriting any existing team, sport, or match edits.
+// Upgrade existing Durable Object records without resetting winners, scheduled times or teams.
+// The sports order migration runs once, so the admin can freely edit order afterward.
 export function ensureHeats(data){
-  // Retain the prior visible-by-default behavior for already deployed tournaments.
-  if(Array.isArray(data.heats)&&typeof data.pointsVisible==="boolean")return data;
+  const migrateSportsOrder=(data.sportsOrderVersion??0)<SPORTS_ORDER_VERSION;
+  if(!migrateSportsOrder&&Array.isArray(data.heats)&&typeof data.pointsVisible==="boolean")return data;
+  const sports=migrateSportsOrder?data.sports.map(sport=>{
+    const index=FIRST_FOUR_SPORTS.indexOf(sport.id);
+    if(index<0)return sport;
+    return {...sport,order:index+1,
+      ...(sport.id==="dodgeball"&&sport.name==="ドッチボール"?{name:"ドッジボール"}:{})};
+  }):data.sports;
   return {...data,
+    sports,sportsOrderVersion:SPORTS_ORDER_VERSION,
     heats:Array.isArray(data.heats)?data.heats:createBorrowedHeats(data.teams),
     pointsVisible:typeof data.pointsVisible==="boolean"?data.pointsVisible:true
   };
