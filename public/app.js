@@ -155,6 +155,7 @@ function renderStandings(data){
 
 function render(){
   const titles={schedule:["予定","12:30〜18:00の開催予定と競技ごとの予定です。"],standings:["総合順位","4チームの競技別ポイントを集計します。"],bracket:["対戦表","対抗競技・綱引きの勝敗と借人競争4回の順位を確認できます。"]};
+  document.querySelector(".page-intro").hidden=state.tab==="schedule";
   $("pageHeading").textContent=titles[state.tab][0];$("pageDescription").textContent=titles[state.tab][1];
   document.querySelectorAll("[data-tab]").forEach(b=>{const active=b.dataset.tab===state.tab;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   if(!state.data)return;
