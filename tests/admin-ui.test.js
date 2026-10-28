@@ -114,7 +114,7 @@ test("borrowed race edits all four-team placements and persists from dedicated f
   submit(window,form);
   await waitFor(()=>ctx.getData()?.heats[0].status==="終了","借人競争の保存");
   assert.equal(ctx.getData()?.heats[0].ranks.A,1);
-  assert.match(document.querySelector("#heatProgress").textContent,/1\s*\/\s*4/);
+  await waitFor(()=>/1\s*\/\s*4/.test(document.querySelector("#heatProgress").textContent),"借人競争の進行表示");
   assert.match(document.querySelector("#borrowedStandings").textContent,/Aチーム/);
 });
 

@@ -91,6 +91,23 @@ test("borrowed-person heats show the next unstarted round in light blue",async t
   assert.match(highlighted()[0].textContent,/第2回/);
 });
 
+test("public menu offers a styled direct link to the existing admin login without replacing public tabs",async t=>{
+  const page=await setup();t.after(page.close);
+  const {document}=page;
+  const menu=document.querySelector("#appMenu");
+  assert.equal(menu.hidden,true);
+  document.querySelector("#menuButton").click();
+  assert.equal(menu.hidden,false);
+  const login=menu.querySelector("a.menu-admin-link");
+  assert.ok(login,"admin login entry is present in the public menu");
+  assert.equal(login.textContent.trim(),"運営画面にログイン");
+  assert.equal(login.getAttribute("href"),"/admin");
+  assert.equal(login.href,"http://localhost:8787/admin");
+  assert.deepEqual([...menu.querySelectorAll("[data-menu-tab]")].map(el=>el.dataset.menuTab),
+    ["schedule","standings","bracket"]);
+  assert.match(css,/\.menu-links \.menu-admin-link\{display:flex/);
+});
+
 test("light blue is explicitly applied to the matrix and next event cards",()=>{
   assert.match(css,/td\.matrix-next\{background:#c9efff/);
   assert.match(css,/\.result-row\.next-match,\.borrowed-heat\.next-match\{background:#c9efff/);
