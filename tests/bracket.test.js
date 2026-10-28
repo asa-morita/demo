@@ -143,8 +143,9 @@ test("web pages refer to a 4-team round robin and do not show match scores",()=>
   assert.deepEqual([...html.matchAll(/data-menu-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
   assert.match(html,/総合順位/);
   assert.doesNotMatch(html,/data-tab="news"|data-tab="results"/);
-  assert.match(app,/2チーム対抗競技の総当たり組み合わせ/);
-  assert.match(app,/league\.all\.map\(m=>/);
+  // The schedule shows only the event timetable; fixture details remain in the match table.
+  assert.match(app,/section\("開催予定"/);
+  assert.doesNotMatch(app,/2チーム対抗競技の総当たり組み合わせ|fixtureRows/);
   assert.match(app,/formatMatchLabel\(m\)/);
   assert.doesNotMatch(app,/第[123]節|\.rounds\.map/);
   assert.match(app,/const titles=\{schedule:\["予定"/);
