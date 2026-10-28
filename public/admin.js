@@ -1,4 +1,4 @@
-import {normalizeData,buildRoundRobin,buildBorrowed} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel} from "./bracket.js";
 
 const $=(id)=>document.getElementById(id);
 const escapeHTML=(value)=>String(value??"").replace(/[&<>"']/g,
@@ -170,8 +170,8 @@ function renderMatches(){
       '<option value="'+value+'"'+(status===value?' selected':'')+'>'+value+'</option>'
     ).join("");
     return '<form class="match-editor" data-match-id="'+escapeHTML(match.id)+'">'+
-      '<div class="match-heading"><span>'+escapeHTML(match.round.replace("R","第"))+
-      '節 ・ '+escapeHTML(match.id)+'</span><span class="match-state'+
+      '<div class="match-heading"><span>'+escapeHTML(formatMatchLabel(match))+
+      '</span><span class="match-state'+
       (match.status==="要確認"?' problem':'')+'">'+escapeHTML(match.status)+'</span></div>'+
       '<strong class="match-opponents">'+escapeHTML(match.labelA)+' <span>対</span> '+
         escapeHTML(match.labelB)+'</strong>'+

@@ -1,10 +1,9 @@
-import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,computeOverall,formatOverallPoints} from "./bracket.js";
+import {normalizeData,buildRoundRobin,buildRoundRobinMatrix,buildBorrowed,computeOverall,formatOverallPoints,formatMatchLabel} from "./bracket.js";
 const $=(id)=>document.getElementById(id);
 const state={tab:"schedule",sport:"",data:null,lastFetch:null,problem:""};
 const esc=(value)=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sportsName=(sport)=>esc(sport?.name||sport?.id||"競技");
 const displayTime=(v)=>{if(!v)return"";const d=new Date(v);return Number.isNaN(d.getTime())?esc(v):new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(d)};
-const matchLabel=(m)=>{const parts=/^R([1-3])M([12])$/.exec(m.id);return parts?`第${parts[1]}節・第${parts[2]}試合`:m.id};
 const pill=(key,label,active,attribute)=>`<button class="pill${active?" active":""}" type="button" ${attribute}="${esc(key)}" aria-pressed="${active}">${esc(label)}</button>`;
 
 const section=(heading,subtitle,body)=>`<section class="content-card"><h2 class="card-heading">${heading}</h2>${subtitle?`<p class="card-subtitle">${subtitle}</p>`:""}${body}</section>`;
@@ -17,7 +16,7 @@ function renderSchedule(data) {
     const league=s.id==="borrowed"?buildBorrowed(data):buildRoundRobin(data,s.id);
     const done=s.id==="borrowed"?league.completedHeats:league.all.filter(m=>m.status==="終了").length;
     const description=s.id==="borrowed"?"4チームで計4回（終了"+done+"/4回）":
-      s.id==="tugofwar"?"2チーム対抗・3節総当たり（終了"+done+"/6試合）":
+      s.id==="tugofwar"?"2チーム対抗・総当たり全6試合（終了"+done+"/6試合）":
       "4チーム・総当たり6試合（終了"+done+"/6試合）";
     return `<li class="schedule-item">
       <div class="schedule-item__time ${start?"":"pending"}">${esc(time)}</div>
@@ -27,9 +26,9 @@ function renderSchedule(data) {
   }).join("");
   const firstHeadToHead=data.sports.find(s=>s.id!=="borrowed");
   const league=firstHeadToHead?buildRoundRobin(data,firstHeadToHead.id):null;
-  const fixtureRows=league?league.rounds.map(round=>
-    `<div class="results-group"><h3>${round.label}</h3><div class="results-list">${round.matches.map(m=>
-    `<div class="result-row"><span class="mini-competition">${esc(matchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`).join(""):"";
+  const fixtureRows=league?
+    `<div class="results-group"><div class="results-list">${league.all.map(m=>
+    `<div class="result-row"><span class="mini-competition">${esc(formatMatchLabel(m))}</span><span class="versus">${esc(m.labelA)} vs ${esc(m.labelB)}</span></div>`).join("")}</div></div>`:"";
   const names=data.teams.map(t=>esc(t.name)).join(" ／ ");
   const allTimed=data.sports.length>0&&data.sports.every(s=>validClock(s.startTime)&&validClock(s.endTime));
   const notice=allTimed?"時間は運営が管理画面から登録した内容です。":"競技ごとの実施時刻・順序は調整中です。上記の並びは仮のもので、確定した時刻は運営の管理画面から登録されます。";
@@ -43,7 +42,7 @@ function renderSchedule(data) {
     <ol class="schedule-list" style="margin-top:14px">${rows}</ol>
     <p class="schedule-caveat">${esc(notice)}</p>`)+
     section("2チーム対抗競技の総当たり組み合わせ",
-      `参加チーム：${names} ／ 3節で各チーム3戦・全6試合（綱引きを含む）`,
+      `参加チーム：${names} ／ 各チーム3戦・全6試合（綱引きを含む）`,
       fixtureRows+`<p class="point-note">借人競争はこの組み合わせを使わず、4チームで4回競います。各回の順位は「対戦表」から確認できます。試合ごとの開始時刻・会場は運営の記録を優先します。</p>`);
 }
 function renderBorrowed(data){
@@ -87,10 +86,10 @@ function renderBracket(data){
         return `<td class="matrix-diagonal" aria-label="${esc(team.name)}同士は対戦なし"><span class="matrix-visually-hidden">対戦なし</span></td>`;
       const opponent=data.teams[j];
       const m=cell.match;
-      const detail=[m?matchLabel(m):"対戦情報なし",m?.court,m?.scheduledAt,cell.kind==="invalid"?m?.issue:""].filter(Boolean).join(" ／ ");
+      const detail=[m?formatMatchLabel(m):"対戦情報なし",m?.court,m?.scheduledAt,cell.kind==="invalid"?m?.issue:""].filter(Boolean).join(" ／ ");
       const label=`${team.name} 対 ${opponent.name}：${cell.text}（${detail}）`;
       return `<td class="matrix-result matrix-${cell.kind}" aria-label="${esc(label)}" title="${esc(detail)}">
-        <span class="matrix-result__main">${esc(cell.text)}</span><span class="matrix-result__round">${esc(cell.round.replace("R","第")+"節")}</span></td>`;
+        <span class="matrix-result__main">${esc(cell.text)}</span><span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
     }).join("");
     return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
   }).join("");

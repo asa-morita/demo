@@ -1,4 +1,5 @@
-// Four-team head-to-head games (including tug-of-war): three rounds, each team plays three matches.
+// Four-team head-to-head games (including tug-of-war): each team plays three matches.
+// Legacy round IDs remain stable for saved results; the chronological display order is below.
 // Borrowed-person race is different: four heats with all four teams competing each time.
 export const ROUNDS = Object.freeze([
   {id:"R1", label:"第1節"},
@@ -6,14 +7,21 @@ export const ROUNDS = Object.freeze([
   {id:"R3", label:"第3節"}
 ]);
 // Indices refer to the fixed ordering of the four teams.
+// Chronological order: A-B starts, C-D rests A/B; only two adjacent matches share a team.
+// IDs are intentionally NOT renumbered, so stored winners and scheduled times stay attached.
 export const FIXTURES = Object.freeze([
-  {id:"R1M1", round:"R1", a:0, b:3},
-  {id:"R1M2", round:"R1", a:1, b:2},
-  {id:"R2M1", round:"R2", a:0, b:2},
-  {id:"R2M2", round:"R2", a:3, b:1},
-  {id:"R3M1", round:"R3", a:0, b:1},
-  {id:"R3M2", round:"R3", a:2, b:3}
+  {id:"R3M1", round:"R3", a:0, b:1}, // 第1試合: A vs B
+  {id:"R3M2", round:"R3", a:2, b:3}, // 第2試合: C vs D
+  {id:"R2M1", round:"R2", a:0, b:2}, // 第3試合: A vs C
+  {id:"R2M2", round:"R2", a:3, b:1}, // 第4試合: D vs B
+  {id:"R1M1", round:"R1", a:0, b:3}, // 第5試合: A vs D
+  {id:"R1M2", round:"R1", a:1, b:2}  // 第6試合: B vs C
 ]);
+export function formatMatchLabel(match) {
+  const id=typeof match==="string"?match:match?.id;
+  const index=FIXTURES.findIndex(f=>f.id===id);
+  return index<0?String(id??""):`第${index+1}試合`;
+}
 export const PODIUM_POINTS = Object.freeze({1:30,2:20,3:10});
 const norm=(v)=>String(v??"").trim();
 const numeric=(v)=>v===null||v===undefined||norm(v)===""?null:(Number.isFinite(Number(v))?Number(v):null);

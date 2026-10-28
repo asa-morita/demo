@@ -45,6 +45,7 @@ async function login(env){
   assert.equal(response.status,200);
   return response.headers.get("set-cookie").split(";")[0];
 }
+const savedMatch=(data,id="R1M1",sportId="futsal")=>data.matches.find(m=>m.sportId===sportId&&m.id===id);
 const initialMatch={
   sportId:"futsal",matchId:"R1M1",status:"終了",winnerId:"A",
   court:"Aコート",scheduledAt:"13:00",
@@ -77,9 +78,9 @@ test("match update checks winner, current version, and fixture",()=>{
   assert.deepEqual(applyUpdate(data,"match",initialMatch),{
     sportId:"futsal",matchId:"R1M1",status:"終了",winnerId:"A"
   });
-  assert.equal(data.matches[0].court,"Aコート");
+  assert.equal(savedMatch(data).court,"Aコート");
   assert.throws(()=>applyUpdate(data,"match",initialMatch),e=>e.conflict===true);
-  const unmatched=createDefaultData();unmatched.matches[0].teamB="B";
+  const unmatched=createDefaultData();savedMatch(unmatched).teamB="B";
   assert.throws(()=>applyUpdate(unmatched,"match",initialMatch),/一致しません/);
 });
 test("team and sport updates check constraints and stale versions",()=>{
@@ -133,10 +134,10 @@ test("worker stores team, sport and match edits and serves them publicly",async(
   const after=await (await worker.fetch(request("/api/results"),env)).json();
   assert.equal(after.teams[0].name,"青組");
   assert.equal(after.sports[0].name,"ミニサッカー");
-  assert.equal(after.matches[0].status,"終了");
-  assert.equal(after.matches[0].winnerId,"A");
+  assert.equal(savedMatch(after).status,"終了");
+  assert.equal(savedMatch(after).winnerId,"A");
   assert.ok(after.updatedAt);
-  assert.equal(getSaved().matches[0].winnerId,"A");
+  assert.equal(savedMatch(getSaved()).winnerId,"A");
   const logout=await worker.fetch(request("/api/admin/logout","POST",{},base,cookie),env);
   assert.match(logout.headers.get("set-cookie"),/Max-Age=0/);
 });

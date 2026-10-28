@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {JSDOM} from "jsdom";
-import {normalizeData,buildRoundRobin,buildBorrowed} from "../public/bracket.js";
+import {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel} from "../public/bracket.js";
 import {TournamentStore} from "../src/store.js";
 import worker from "../src/worker.js";
 
@@ -10,7 +10,7 @@ const base="http://localhost:8787";
 const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
 const script=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8")
   .replace(/^import \{[^}]+\} from "\.\/bracket\.js";/m,
-    "const {normalizeData,buildRoundRobin,buildBorrowed}=window.__bracket;");
+    "const {normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel}=window.__bracket;");
 const tick=()=>new Promise(resolve=>setTimeout(resolve,8));
 async function settle(){for(let i=0;i<4;i++)await tick()}
 async function waitFor(check,label="状態の更新"){
@@ -41,7 +41,7 @@ async function setup(){
   const {window}=dom;
   window.scrollTo=()=>{window.__scrollCount=(window.__scrollCount||0)+1};
   window.confirm=()=>true;
-  window.__bracket={normalizeData,buildRoundRobin,buildBorrowed};
+  window.__bracket={normalizeData,buildRoundRobin,buildBorrowed,formatMatchLabel};
   let cookie="";
   window.fetch=async(url,options={})=>{
     const method=options.method||"GET";
@@ -68,6 +68,17 @@ function change(window,element,value){
 function submit(window,form){
   form.dispatchEvent(new window.Event("submit",{bubbles:true,cancelable:true}));
 }
+
+test("admin result editor lists six numbered matches in the rest-friendly order",async t=>{
+  const ctx=await setup();t.after(ctx.close);
+  const headings=[...ctx.document.querySelectorAll("#matchList form .match-heading span:first-child")]
+    .map(el=>el.textContent);
+  assert.deepEqual(headings,
+    ["第1試合","第2試合","第3試合","第4試合","第5試合","第6試合"]);
+  assert.deepEqual([...ctx.document.querySelectorAll("#matchList form")].map(el=>el.dataset.matchId),
+    ["R3M1","R3M2","R2M1","R2M2","R1M1","R1M2"]);
+  assert.equal(headings.some(heading=>heading.includes("節")),false);
+});
 
 test("bottom footer switches all four working editor panels without hiding them",async t=>{
   const ctx=await setup();t.after(ctx.close);
