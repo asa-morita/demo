@@ -144,7 +144,7 @@ export function buildRoundRobinMatrix(league,teams) {
     if(!match||match.status==="要確認")
       return {kind:"invalid",text:"要確認",round:match?.round||"",match:match||null};
     if(match.winner)
-      return {kind:match.winner===row.id?"win":"loss",text:match.winner===row.id?"勝":"敗",round:match.round,match};
+      return {kind:match.winner===row.id?"win":"loss",text:match.winner===row.id?"⭕":"✖",round:match.round,match};
     if(match.status==="試合中")
       return {kind:"live",text:"試合中",round:match.round,match};
     return {kind:"pending",text:"未開始",round:match.round,match};

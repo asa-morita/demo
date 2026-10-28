@@ -112,3 +112,17 @@ test("light blue is explicitly applied to the matrix and next event cards",()=>{
   assert.match(css,/td\.matrix-next\{background:#c9efff/);
   assert.match(css,/\.result-row\.next-match,\.borrowed-heat\.next-match\{background:#c9efff/);
 });
+
+test("completed round-robin fixtures show only red circles and blue crosses without match numbers",async t=>{
+  const page=await setup();t.after(page.close);
+  page.selectSport("volleyball");
+  const finished=[...page.document.querySelectorAll("#view td.matrix-win, #view td.matrix-loss")];
+  assert.equal(finished.length,12);
+  for(const cell of finished){
+    assert.equal(cell.querySelector(".matrix-result__round"),null);
+    assert.equal(cell.querySelector(".matrix-result__main").textContent,cell.classList.contains("matrix-win")?"⭕":"✖");
+    assert.match(cell.getAttribute("aria-label"),/第[1-6]試合/);
+  }
+  assert.match(css,/\.matrix-win \.matrix-result__main\{color:#df3030/);
+  assert.match(css,/\.matrix-loss \.matrix-result__main\{color:#2176d2/);
+});
