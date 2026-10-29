@@ -219,6 +219,11 @@ async function checkScreenVersion(){
     const response=await fetch("/api/version",{cache:"no-store"});
     if(!response.ok)return;
     const payload=await response.json();
+    const latestPrLink=$("latestPrLink");
+    if(Number.isSafeInteger(payload.latestPr)&&payload.latestPr>0&&latestPrLink){
+      latestPrLink.href="https://github.com/asa-morita/demo/pull/"+payload.latestPr;
+      latestPrLink.textContent="最新PR #"+payload.latestPr;
+    }
     if(typeof payload.version!=="string"||!payload.version)return;
     if(screenVersion===null){screenVersion=payload.version;return;}
     if(payload.version!==screenVersion&&!reloadStarted){
