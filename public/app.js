@@ -216,3 +216,21 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()}
 refresh();
 setInterval(refresh,5000);
 
+
+let screenVersion=null;
+let reloadStarted=false;
+async function checkScreenVersion(){
+  try{
+    const response=await fetch("/api/version",{cache:"no-store"});
+    if(!response.ok)return;
+    const payload=await response.json();
+    if(typeof payload.version!=="string"||!payload.version)return;
+    if(screenVersion===null){screenVersion=payload.version;return;}
+    if(payload.version!==screenVersion&&!reloadStarted){
+      reloadStarted=true;
+      window.location.reload();
+    }
+  }catch{}
+}
+setInterval(checkScreenVersion,30000);
+checkScreenVersion();

@@ -7,8 +7,12 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.js",
+    "build:version": "node scripts/write-build-version.js",
+    "predev": "npm run build:version",
     "dev": "wrangler dev",
+    "predeploy": "npm run build:version",
     "deploy": "wrangler deploy",
+    "predeploy:check": "npm run build:version",
     "deploy:check": "wrangler deploy --dry-run"
   },
   "devDependencies": {
