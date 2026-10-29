@@ -31,6 +31,17 @@ async function storeCall(env,path,input){
 export default {
   async fetch(request,env){
     const url=new URL(request.url);
+    if(url.pathname==="/api/version"){
+      if(request.method!=="GET")return json({error:"Method not allowed"},405);
+      try{
+        const response=await env.ASSETS.fetch(new Request(new URL("/build-version.json",url),{headers:{Accept:"application/json"}}));
+        if(!response.ok)throw new Error("Build version asset is unavailable");
+        return json(await response.json());
+      }catch(error){
+        console.error("Build version read failed:",String(error));
+        return json({error:"画面バージョンを取得できません"},503);
+      }
+    }
     if(url.pathname==="/api/results"){
       if(request.method!=="GET")return json({error:"Method not allowed"},405);
       try{return json(await storeCall(env,"data"))}

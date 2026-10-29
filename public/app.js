@@ -212,7 +212,27 @@ async function refresh(){
     if(!state.data)$("view").innerHTML=section("接続エラー",null,`<p class="muted">${esc(state.problem)}</p>`);
   }
 }
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+let screenVersion=null;
+let reloadStarted=false;
+async function checkScreenVersion(){
+  try{
+    const response=await fetch("/api/version",{cache:"no-store"});
+    if(!response.ok)return;
+    const payload=await response.json();
+    if(typeof payload.version!=="string"||!payload.version)return;
+    if(screenVersion===null){screenVersion=payload.version;return;}
+    if(payload.version!==screenVersion&&!reloadStarted){
+      reloadStarted=true;
+      window.location.reload();
+    }
+  }catch{}
+}
+let versionPollCount=0;
 refresh();
-setInterval(refresh,5000);
-
+checkScreenVersion();
+setInterval(async()=>{
+  await refresh();
+  versionPollCount++;
+  if(versionPollCount%6===0)await checkScreenVersion();
+},5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){refresh();checkScreenVersion()}});
