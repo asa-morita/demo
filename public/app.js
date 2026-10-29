@@ -116,7 +116,7 @@ function renderBracket(data){
       const score=scoreText(m,team.id);
       const label=`${team.name} 対 ${opponent.name}：${upcoming?"次の試合・":""}${cell.text}${score?" 得点 "+score:""}（${detail}）`;
       return `<td class="matrix-result matrix-${cell.kind}${upcoming?" matrix-next":""}" aria-label="${esc(label)}" title="${esc(detail)}">
-        <span class="matrix-result__main">${esc(cell.text)}</span>${score?`<span class="matrix-result__score">${score}</span>`:""}<span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
+        <span class="matrix-result__main">${esc(upcoming?"次の試合":cell.text)}</span>${score?`<span class="matrix-result__score">${score}</span>`:""}<span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
     }).join("");
     return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
   }).join("");
