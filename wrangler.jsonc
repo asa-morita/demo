@@ -1,5 +1,5 @@
 {
-  "name": "sports-festival-live-brackets",
+  "name": "demo",
   "compatibility_date": "2026-10-09",
   "main": "./src/worker.js",
   "assets": {
@@ -26,5 +26,15 @@
         "TournamentStore"
       ]
     }
-  ]
+  ],
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "TOURNAMENT_STORE",
+          "class_name": "TournamentStore"
+        }
+      ]
+    }
+  }
 }

@@ -167,3 +167,13 @@ test("footer navigation can cancel unsaved changes and restore server values aft
   form=document.querySelector("#teamList form[data-team-id=A]");
   assert.equal(form.elements.namedItem("name").value,"Aチーム");
 });
+
+test("match result editors omit court and scheduled time inputs",async t=>{
+  const ctx=await setup();t.after(ctx.close);
+  const forms=[...ctx.document.querySelectorAll("#matchList form.match-editor")];
+  assert.ok(forms.length>0);
+  for(const form of forms){
+    assert.equal(form.querySelector('[name="court"]'),null);
+    assert.equal(form.querySelector('[name="scheduledAt"]'),null);
+  }
+});
