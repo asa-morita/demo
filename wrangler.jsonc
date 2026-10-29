@@ -26,5 +26,15 @@
         "TournamentStore"
       ]
     }
-  ]
+  ],
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "TOURNAMENT_STORE",
+          "class_name": "TournamentStore"
+        }
+      ]
+    }
+  }
 }
