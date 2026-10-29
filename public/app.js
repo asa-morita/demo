@@ -230,9 +230,9 @@ async function checkScreenVersion(){
 let versionPollCount=0;
 refresh();
 checkScreenVersion();
-setInterval(()=>{
-  refresh();
+setInterval(async()=>{
+  await refresh();
   versionPollCount++;
-  if(versionPollCount%6===0)checkScreenVersion();
+  if(versionPollCount%6===0)await checkScreenVersion();
 },5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){refresh();checkScreenVersion()}});
