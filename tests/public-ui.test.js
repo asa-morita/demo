@@ -112,3 +112,22 @@ test("light blue is explicitly applied to the matrix and next event cards",()=>{
   assert.match(css,/td\.matrix-next\{background:#c9efff/);
   assert.match(css,/\.result-row\.next-match,\.borrowed-heat\.next-match\{background:#c9efff/);
 });
+
+test("scores render from each row team's perspective and clear without phantom zeros",async t=>{
+  const page=await setup();t.after(page.close);
+  page.selectSport("basketball");
+  assert.equal(page.document.querySelectorAll(".matrix-result__score").length,0);
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="basketball"&&m.id==="R3M1"),
+    {status:"試合中",scoreA:12,scoreB:0}));
+  assert.deepEqual([...page.document.querySelectorAll(".matrix-result__score")].map(e=>e.textContent),["12–0","0–12"]);
+  assert.match(page.document.querySelector('td[aria-label^="Aチーム 対 Bチーム"]').getAttribute("aria-label"),/12–0/);
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="basketball"&&m.id==="R3M1"),
+    {status:"終了",winnerId:"A",scoreA:14,scoreB:0}));
+  assert.equal(page.document.querySelector(".matrix-result__score").textContent,"14–0");
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="basketball"&&m.id==="R3M1"),{scoreA:null,scoreB:null}));
+  assert.equal(page.document.querySelectorAll(".matrix-result__score").length,0);
+  page.selectSport("tugofwar");
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1"),{scoreA:2,scoreB:0}));
+  assert.equal(page.document.querySelector(".tug-fixture .match-score").textContent,"2–0");
+});
+

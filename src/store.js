@@ -70,6 +70,12 @@ function optionalString(value,label,max){
 function assertExpected(current,expected){
   if(current!==expected)throw error("別の管理者が変更しています。最新情報を再読込してください",true);
 }
+function optionalScore(value){
+  if(value===null||value===undefined||value==="")return null;
+  if(typeof value!=="number"||!Number.isSafeInteger(value)||value<0||value>9999)
+    throw error("得点は0〜9999の整数で入力してください");
+  return value;
+}
 function findSport(data,id){
   const sport=data.sports.find(s=>s.id===id);
   if(!sport)throw error("競技が見つかりません");
@@ -96,11 +102,19 @@ export function validateMatchUpdate(input,data){
   if(status!=="終了"&&winnerId)throw error("未開始・試合中の勝者は空欄にしてください");
   const court=optionalString(input.court??"","コート",80);
   const scheduledAt=optionalString(input.scheduledAt??"","開始予定",80);
+  const editsScores=Object.hasOwn(input,"scoreA")||Object.hasOwn(input,"scoreB");
+  const scoreA=editsScores?optionalScore(input.scoreA):(match.scoreA??null);
+  const scoreB=editsScores?optionalScore(input.scoreB):(match.scoreB??null);
+  if(editsScores){
+    if((scoreA===null)!==(scoreB===null))throw error("両チームの得点を入力するか、両方を空欄にしてください");
+    assertExpected(match.scoreA??null,input.expectedScoreA);
+    assertExpected(match.scoreB??null,input.expectedScoreB);
+  }
   assertExpected(match.status,clean(input.expectedStatus));
   assertExpected(match.winnerId,clean(input.expectedWinnerId));
   assertExpected(match.court,clean(input.expectedCourt));
   assertExpected(match.scheduledAt,clean(input.expectedScheduledAt));
-  return {match,status,winnerId,court,scheduledAt,sportId,matchId};
+  return {match,status,winnerId,court,scheduledAt,scoreA,scoreB,sportId,matchId};
 }
 
 export function validateHeatUpdate(input,data){
@@ -177,7 +191,7 @@ export function applyUpdate(data,kind,input){
   }
   if(kind==="match"){
     const u=validateMatchUpdate(input,data);
-    Object.assign(u.match,{status:u.status,winnerId:u.winnerId,court:u.court,scheduledAt:u.scheduledAt});
+    Object.assign(u.match,{status:u.status,winnerId:u.winnerId,court:u.court,scheduledAt:u.scheduledAt,scoreA:u.scoreA,scoreB:u.scoreB});
     return {sportId:u.sportId,matchId:u.matchId,status:u.status,winnerId:u.winnerId};
   }
   if(kind==="team"){
@@ -225,3 +239,4 @@ export class TournamentStore {
     return respond({error:"Not found"},404);
   }
 }
+
