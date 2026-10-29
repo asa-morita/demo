@@ -86,13 +86,13 @@ function renderTugOfWar(data){
   }).join("");
   const rows=league.standings.map(t=>`<tr class="${t.rank===1&&league.completed?"leader":""}">
     <td><span class="rank-symbol">${t.rank}</span></td><td>${esc(t.name)}</td>
-    <td class="num">${t.played}</td><td class="num">${t.wins}</td><td class="num">${t.losses}</td></tr>`).join("");
+    <td class="num">${t.wins}</td><td class="num">${t.losses}</td></tr>`).join("");
   return section("綱引き ・ 2チーム合同戦",
     `第1試合〜第3試合（各チーム3戦） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     `<div class="results-list">${fixtures}</div>`)+
     section("綱引きの競技別順位",
       league.completed?"全3試合の結果による確定順位です。":"現在の勝利数による暫定順位です。総合ポイントは全3試合終了後に反映されます。",
-      `<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>試合</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>
+      `<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p class="point-note">各試合では勝利した2チームの両方に1勝を加算します。勝利数が同じ場合は同順位です。全3試合終了後に総合ポイントを反映します。</p>`);
 }
 function renderBracket(data){
