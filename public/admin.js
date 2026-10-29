@@ -183,7 +183,6 @@ function renderMatches(){
         winnerOptions(match,winner)+'</select></label>'+
       '<label>'+escapeHTML(match.labelA)+'の得点<input name="scoreA" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreA??"")+'" placeholder="任意"></label>'+
       '<label>'+escapeHTML(match.labelB)+'の得点<input name="scoreB" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreB??"")+'" placeholder="任意"></label>'+
-      '<p class="muted">得点は両方入力、または両方空欄にしてください。勝者は別途選択します（同点での決着にも対応）。</p>'+
       '</div><button class="primary save" type="submit">この試合を保存</button></form>';
   }).join("")||'<div class="panel empty-state">該当する試合はありません。全試合が終了している場合は、絞り込みを解除してください。</div>';
 }
