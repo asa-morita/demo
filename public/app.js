@@ -134,8 +134,8 @@ function renderBracket(data){
       <span class="matrix-legend__item"><i class="matrix-live"></i>試合中</span>
       <span class="matrix-legend__item"><i class="matrix-invalid"></i>要確認</span>
     </div>`;
-  const rows=league.standings.map(r=>`<tr class="${r.rank===1&&league.completed?"leader":""}"><td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.played}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td></tr>`).join("");
-  const standingTable=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>試合</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const rows=league.standings.map(r=>`<tr class="${r.rank===1&&league.completed?"leader":""}"><td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td></tr>`).join("");
+  const standingTable=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   return section(sportsName(league.sport)+" の対戦表",
     `4チーム総当たり（各3試合、全6試合） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     matrix)+section(sportsName(league.sport)+" の競技別順位",
