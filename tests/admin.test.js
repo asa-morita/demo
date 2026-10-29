@@ -53,6 +53,26 @@ const initialMatch={
   expectedCourt:"",expectedScheduledAt:""
 };
 
+test("score validation rejects invalid pairs and stale scores, and old clients preserve scores",()=>{
+  const data=createDefaultData();
+  const payload={...initialMatch,scoreA:0,scoreB:12,expectedScoreA:null,expectedScoreB:null};
+  for(const value of [-1,1.5,10000,"12",true,Infinity]){
+    assert.throws(()=>applyUpdate(data,"match",{...payload,scoreA:value}),/得点/);
+  }
+  assert.throws(()=>applyUpdate(data,"match",{...payload,scoreA:null}),/両チーム/);
+  applyUpdate(data,"match",payload);
+  assert.equal(savedMatch(data).scoreA,0);
+  assert.equal(savedMatch(data).scoreB,12);
+  const current={...payload,expectedStatus:"終了",expectedWinnerId:"A",expectedCourt:"Aコート",expectedScheduledAt:"13:00"};
+  assert.throws(()=>applyUpdate(data,"match",{...current,scoreA:1}),e=>e.conflict===true);
+  const {scoreA,scoreB,expectedScoreA,expectedScoreB,...oldClient}=current;
+  applyUpdate(data,"match",oldClient);
+  assert.equal(savedMatch(data).scoreB,12);
+  applyUpdate(data,"match",{...current,scoreA:null,scoreB:null,expectedScoreA:0,expectedScoreB:12});
+  assert.equal(savedMatch(data).scoreA,null);
+  assert.equal(savedMatch(data).scoreB,null);
+});
+
 test("signed admin session expires and rejects modified signatures",async()=>{
   const token=await createSession(sessionSecret,1700000000);
   assert.equal(await verifySession(token,sessionSecret,1700000001),true);
@@ -404,3 +424,4 @@ test("tab navigation is in footer after editor panels and keeps all four button 
   assert.equal((html.match(/data-admin-tab=/g)||[]).length,4);
   assert.doesNotMatch(html,/class="admin-tabs"/);
 });
+

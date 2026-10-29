@@ -7,6 +7,8 @@ const displayTime=(v)=>{if(!v)return"";const d=new Date(v);return Number.isNaN(d
 const pill=(key,label,active,attribute)=>`<button class="pill${active?" active":""}" type="button" ${attribute}="${esc(key)}" aria-pressed="${active}">${esc(label)}</button>`;
 
 const section=(heading,subtitle,body)=>`<section class="content-card"><h2 class="card-heading">${heading}</h2>${subtitle?`<p class="card-subtitle">${subtitle}</p>`:""}${body}</section>`;
+const hasScores=m=>m&&Number.isInteger(m.scoreA)&&Number.isInteger(m.scoreB)&&m.scoreA>=0&&m.scoreB>=0;
+const scoreText=(m,teamId)=>hasScores(m)?(teamId===m.teamB?`${m.scoreB}–${m.scoreA}`:`${m.scoreA}–${m.scoreB}`):"";
 const validClock=(s)=>/^(?:[01]?\d|2[0-3]):[0-5]\d$/.test(s||"");
 function renderSchedule(data) {
   const rows=data.sports.map((s,index)=>{
@@ -75,6 +77,7 @@ function renderTugOfWar(data){
     return `<div class="result-row tug-fixture${upcoming?" next-match":""}">
       <span class="mini-competition">${esc(m.label)}${upcoming?' ・ 次の試合':""}</span>
       <div class="versus">${esc(m.labelA)} <span class="tug-versus">vs</span> ${esc(m.labelB)}</div>
+      ${hasScores(m)?`<span class="match-score" aria-label="${esc(m.labelA)} ${m.scoreA}点、${esc(m.labelB)} ${m.scoreB}点">${scoreText(m)}</span>`:""}
       <span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>
       ${winner?`<span class="tug-winner">勝利：${esc(winner)}</span>`:""}
       ${m.issue?`<p class="problem-text">${esc(m.issue)}</p>`:""}
@@ -110,9 +113,10 @@ function renderBracket(data){
       const m=cell.match;
       const detail=[m?formatMatchLabel(m):"対戦情報なし",m?.court,m?.scheduledAt,cell.kind==="invalid"?m?.issue:""].filter(Boolean).join(" ／ ");
       const upcoming=m?.id===next?.id;
-      const label=`${team.name} 対 ${opponent.name}：${upcoming?"次の試合・":""}${cell.text}（${detail}）`;
+      const score=scoreText(m,team.id);
+      const label=`${team.name} 対 ${opponent.name}：${upcoming?"次の試合・":""}${cell.text}${score?" 得点 "+score:""}（${detail}）`;
       return `<td class="matrix-result matrix-${cell.kind}${upcoming?" matrix-next":""}" aria-label="${esc(label)}" title="${esc(detail)}">
-        <span class="matrix-result__main">${esc(cell.text)}</span><span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
+        <span class="matrix-result__main">${esc(cell.text)}</span>${score?`<span class="matrix-result__score">${score}</span>`:""}<span class="matrix-result__round">${esc(m?formatMatchLabel(m):"—")}</span></td>`;
     }).join("");
     return `<tr><th scope="row" class="matrix-team-heading" title="${esc(team.name)}">${esc(team.name)}</th>${columns}</tr>`;
   }).join("");
@@ -121,7 +125,7 @@ function renderBracket(data){
       <thead><tr><th class="matrix-corner matrix-diagonal" scope="col" aria-label="縦軸は自チーム、横軸は対戦相手"><span class="matrix-visually-hidden">縦：自チーム、横：対戦相手</span></th>${headings}</tr></thead>
       <tbody>${body}</tbody>
     </table></div>
-    <p class="matrix-help">縦のチームから見た対戦結果を表示します。水色は次の試合、斜線は同じチーム同士の対戦なしを表します。</p>
+    <p class="matrix-help">縦のチームから見た対戦結果を表示します。得点は「自チーム–相手」の順です。水色は次の試合、斜線は同じチーム同士の対戦なしを表します。</p>
     <div class="matrix-legend" aria-label="対戦結果の凡例">
       <span class="matrix-legend__item"><i class="matrix-win"></i>勝</span>
       <span class="matrix-legend__item"><i class="matrix-loss"></i>敗</span>
@@ -136,7 +140,7 @@ function renderBracket(data){
     `4チーム総当たり（各3試合、全6試合） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     matrix)+section(sportsName(league.sport)+" の競技別順位",
     league.completed?"6試合の結果による確定順位です。":"現在の勝敗による暫定順位です。総合ポイントは全試合終了後に反映されます。",
-    standingTable+`<p class="point-note">勝利数を優先し、2チームが同勝利数なら直接対決の勝者を上位にします。3チーム以上の同勝利数は、点数を記録しないため同順位とします。</p>`);
+    standingTable+`<p class="point-note">勝利数を優先し、2チームが同勝利数なら直接対決の勝者を上位にします。3チーム以上の同勝利数は同順位とします。得点は記録・表示用で、得失点差は順位に使用しません。</p>`);
 }
 function renderStandings(data){
   const overall=computeOverall(data);
@@ -211,3 +215,4 @@ async function refresh(){
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
 refresh();
 setInterval(refresh,5000);
+

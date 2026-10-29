@@ -177,3 +177,33 @@ test("match result editors omit court and scheduled time inputs",async t=>{
     assert.equal(form.querySelector('[name="scheduledAt"]'),null);
   }
 });
+
+test("match scores save, reload, update and clear including zero and tug scores",async t=>{
+  const ctx=await setup();t.after(ctx.close);
+  const {document,window}=ctx;
+  for(const sport of ["volleyball","tugofwar"]){
+    change(window,document.querySelector("#matchSportSelect"),sport);
+    let form=document.querySelector("#matchList form");
+    const id=form.dataset.matchId;
+    const saved=()=>ctx.getData()?.matches.find(m=>m.sportId===sport&&m.id===id);
+    change(window,form.elements.namedItem("status"),"試合中");
+    change(window,form.elements.namedItem("scoreA"),"12");
+    change(window,form.elements.namedItem("scoreB"),"0");
+    submit(window,form);
+    await waitFor(()=>saved()?.scoreA===12&&saved()?.scoreB===0,"得点の保存");
+    await waitFor(()=>!form.isConnected,"保存後の再描画");
+    form=document.querySelector("#matchList form");
+    assert.equal(form.elements.namedItem("scoreB").value,"0");
+    change(window,form.elements.namedItem("scoreA"),"13");
+    submit(window,form);
+    await waitFor(()=>saved()?.scoreA===13,"得点の修正");
+    await waitFor(()=>!form.isConnected,"修正後の再描画");
+    form=document.querySelector("#matchList form");
+    change(window,form.elements.namedItem("scoreA"),"");
+    change(window,form.elements.namedItem("scoreB"),"");
+    submit(window,form);
+    await waitFor(()=>saved()?.scoreA===null&&saved()?.scoreB===null,"得点の削除");
+    await waitFor(()=>!form.isConnected,"削除後の再描画");
+  }
+});
+

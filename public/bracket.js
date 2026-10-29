@@ -95,6 +95,7 @@ export function buildRoundRobin(data,sportId) {
       labelA:names.get(teamA)||"対戦相手未定",labelB:names.get(teamB)||"対戦相手未定",
       status:issue?"要確認":row.status||"未開始",issue,winner,
       loser:winner?(winner===teamA?teamB:teamA):null,
+      scoreA:row.scoreA??null,scoreB:row.scoreB??null,
       court:row.court||"",scheduledAt:row.scheduledAt||""
     };
   });
@@ -192,6 +193,7 @@ export function buildTugOfWar(data){
       labelA:sideA.map(teamName).join("＋"),labelB:sideB.map(teamName).join("＋"),
       status:issue?"要確認":row.status||"未開始",issue,
       winner:issue?null:(row.status==="終了"?row.winnerId:null),
+      scoreA:row.scoreA??null,scoreB:row.scoreB??null,
       court:row.court||"",scheduledAt:row.scheduledAt||""
     };
   });
@@ -280,3 +282,4 @@ export function computeOverall(data) {
   rows.forEach((r,i)=>{r.rank=completedSports===0?null:(i===0?1:(rows[i-1].points===r.points&&rows[i-1].first===r.first&&rows[i-1].second===r.second&&rows[i-1].third===r.third?rows[i-1].rank:i+1))});
   return {rows,completedSports,totalSports:data.sports.length,sportsSummary};
 }
+

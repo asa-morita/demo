@@ -183,11 +183,10 @@ test("schedule fields are preserved with empty times",()=>{
   assert.deepEqual([d.sports[0].startTime,d.sports[0].endTime,d.sports[0].venue],["12:30","13:20","体育館"]);
   assert.equal(d.sports[1].startTime,"");
 });
-test("web pages refer to a 4-team round robin and do not show match scores",()=>{
+test("web pages retain the four-team round robin and three public tabs",()=>{
   const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
   assert.match(app,/buildRoundRobin/);
   assert.match(app,/4チーム総当たり/);
-  assert.doesNotMatch(app,/m\.scoreA\s*\?\?/);
   const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
   assert.deepEqual([...html.matchAll(/data-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
   assert.deepEqual([...html.matchAll(/data-menu-tab="([^"]+)"/g)].map(x=>x[1]),["schedule","standings","bracket"]);
@@ -310,3 +309,4 @@ test("total points are masked only in the public display while ranking stays int
   assert.equal(formatOverallPoints(50,false),"⁇?");
   assert.equal(formatOverallPoints(0,false),"⁇?");
 });
+
