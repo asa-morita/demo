@@ -212,11 +212,6 @@ async function refresh(){
     if(!state.data)$("view").innerHTML=section("接続エラー",null,`<p class="muted">${esc(state.problem)}</p>`);
   }
 }
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
-refresh();
-setInterval(refresh,5000);
-
-
 let screenVersion=null;
 let reloadStarted=false;
 async function checkScreenVersion(){
@@ -232,5 +227,12 @@ async function checkScreenVersion(){
     }
   }catch{}
 }
-setInterval(checkScreenVersion,30000);
+let versionPollCount=0;
+refresh();
 checkScreenVersion();
+setInterval(()=>{
+  refresh();
+  versionPollCount++;
+  if(versionPollCount%6===0)checkScreenVersion();
+},5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){refresh();checkScreenVersion()}});
