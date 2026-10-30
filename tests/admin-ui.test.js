@@ -130,7 +130,7 @@ test("tug-of-war fixtures, team names, timetable and points toggle remain editab
   assert.match(form.textContent,/Cチーム/);
   assert.match(form.textContent,/Dチーム/);
   const winners=[...form.elements.namedItem("winnerId").options].map(o=>o.value);
-  assert.deepEqual(winners,["","A+B","C+D"]);
+  assert.deepEqual(winners,["","A+B","C+D","draw"]);
   change(window,form.elements.namedItem("status"),"終了");
   change(window,form.elements.namedItem("winnerId"),"A+B");
   submit(window,form);
@@ -207,3 +207,25 @@ test("match scores save, reload, update and clear including zero and tug scores"
   }
 });
 
+
+
+test("admin draw selection persists and can be changed back to a winning team",async t=>{
+  const ctx=await setup();t.after(ctx.close);
+  const {document:doc,window}=ctx;
+  for(const sportId of ["volleyball","tugofwar"]){
+    change(window,doc.querySelector("#matchSportSelect"),sportId);
+    let form=doc.querySelector("form[data-match-id]");
+    const id=form.dataset.matchId;
+    change(window,form.elements.namedItem("status"),"終了");
+    change(window,form.elements.namedItem("winnerId"),"draw");
+    submit(window,form);
+    await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId===sportId&&m.id===id)?.winnerId==="draw","引き分け保存");
+    await waitFor(()=>doc.querySelector('form[data-match-id="'+id+'"]').elements.namedItem("winnerId").value==="draw","引き分け再表示");
+    form=doc.querySelector('form[data-match-id="'+id+'"]');
+    const winner=sportId==="tugofwar"?"A+B":"A";
+    change(window,form.elements.namedItem("winnerId"),winner);
+    submit(window,form);
+    await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId===sportId&&m.id===id)?.winnerId===winner,"勝者への変更");
+    await settle();
+  }
+});
