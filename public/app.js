@@ -79,21 +79,21 @@ function renderTugOfWar(data){
       <div class="versus">${esc(m.labelA)} <span class="tug-versus">vs</span> ${esc(m.labelB)}</div>
       ${hasScores(m)?`<span class="match-score" aria-label="${esc(m.labelA)} ${m.scoreA}点、${esc(m.labelB)} ${m.scoreB}点">${scoreText(m)}</span>`:""}
       <span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>
-      ${winner?`<span class="tug-winner">勝利：${esc(winner)}</span>`:""}
+      ${m.draw?`<span class="tug-winner">引き分け</span>`:winner?`<span class="tug-winner">勝利：${esc(winner)}</span>`:""}
       ${m.issue?`<p class="problem-text">${esc(m.issue)}</p>`:""}
       ${m.scheduledAt?`<p class="muted">開始予定：${esc(m.scheduledAt)}</p>`:""}
     </div>`;
   }).join("");
   const rows=league.standings.map(t=>`<tr class="${t.rank===1&&league.completed?"leader":""}">
     <td><span class="rank-symbol">${t.rank}</span></td><td>${esc(t.name)}</td>
-    <td class="num">${t.wins}</td><td class="num">${t.losses}</td></tr>`).join("");
+    <td class="num">${t.wins}</td><td class="num">${t.losses}</td><td class="num">${t.draws}</td></tr>`).join("");
   return section("綱引き ・ 2チーム合同戦",
     `第1試合〜第3試合（各チーム3戦） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     `<div class="results-list">${fixtures}</div>`)+
     section("綱引きの競技別順位",
       league.completed?"全3試合の結果による確定順位です。":"現在の勝利数による暫定順位です。総合ポイントは全3試合終了後に反映されます。",
-      `<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="point-note">各試合では勝利した2チームの両方に1勝を加算します。勝利数が同じ場合は同順位です。全3試合終了後に総合ポイントを反映します。</p>`);
+      `<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th><th>引分</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="point-note">各試合では勝利した2チームの両方に1勝を加算します。引き分けは4チームすべてに1引分を加算し、勝敗は加算しません。勝利数が同じ場合は同順位です。全3試合終了後に総合ポイントを反映します。</p>`);
 }
 function renderBracket(data){
   if(state.sport==="borrowed")return renderBorrowed(data);
@@ -129,18 +129,19 @@ function renderBracket(data){
     <div class="matrix-legend" aria-label="対戦結果の凡例">
       <span class="matrix-legend__item"><i class="matrix-win"></i>勝</span>
       <span class="matrix-legend__item"><i class="matrix-loss"></i>敗</span>
+      <span class="matrix-legend__item"><i class="matrix-draw"></i>引分</span>
       <span class="matrix-legend__item"><i class="matrix-pending"></i>未開始</span>
       <span class="matrix-legend__item"><i class="matrix-next"></i>次の試合</span>
       <span class="matrix-legend__item"><i class="matrix-live"></i>試合中</span>
       <span class="matrix-legend__item"><i class="matrix-invalid"></i>要確認</span>
     </div>`;
-  const rows=league.standings.map(r=>`<tr class="${r.rank===1&&league.completed?"leader":""}"><td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td></tr>`).join("");
-  const standingTable=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const rows=league.standings.map(r=>`<tr class="${r.rank===1&&league.completed?"leader":""}"><td><span class="rank-symbol">${r.rank}</span></td><td>${esc(r.name)}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.draws}</td></tr>`).join("");
+  const standingTable=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th><th>引分</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   return section(sportsName(league.sport)+" の対戦表",
     `4チーム総当たり（各3試合、全6試合） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     matrix)+section(sportsName(league.sport)+" の競技別順位",
     league.completed?"6試合の結果による確定順位です。":"現在の勝敗による暫定順位です。総合ポイントは全試合終了後に反映されます。",
-    standingTable+`<p class="point-note">勝利数を優先し、2チームが同勝利数なら直接対決の勝者を上位にします。3チーム以上の同勝利数は同順位とします。得点は記録・表示用で、得失点差は順位に使用しません。</p>`);
+    standingTable+`<p class="point-note">引き分けは両チームに1引分を加算し、勝敗は加算しません。勝利数を優先し、2チームが同勝利数なら直接対決の勝者を上位にします。直接対決が引き分けの場合は同順位です。3チーム以上の同勝利数は同順位とします。得点は記録・表示用で、得失点差は順位に使用しません。</p>`);
 }
 function renderStandings(data){
   const overall=computeOverall(data);
@@ -241,3 +242,4 @@ setInterval(async()=>{
   if(versionPollCount%6===0)await checkScreenVersion();
 },5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){refresh();checkScreenVersion()}});
+

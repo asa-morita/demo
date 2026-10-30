@@ -425,3 +425,18 @@ test("tab navigation is in footer after editor panels and keeps all four button 
   assert.doesNotMatch(html,/class="admin-tabs"/);
 });
 
+
+
+test("draw results save for both formats and enforce status and stale result checks",()=>{
+  for(const [sportId,matchId] of [["volleyball","R3M1"],["tugofwar","T1"]]){
+    const data=createDefaultData();
+    const payload={sportId,matchId,status:"終了",winnerId:"draw",court:"",scheduledAt:"",
+      expectedStatus:"未開始",expectedWinnerId:"",expectedCourt:"",expectedScheduledAt:""};
+    assert.throws(()=>applyUpdate(data,"match",{...payload,status:"試合中"}),/空欄/);
+    applyUpdate(data,"match",payload);
+    assert.equal(data.matches.find(m=>m.sportId===sportId&&m.id===matchId).winnerId,"draw");
+    assert.throws(()=>applyUpdate(data,"match",payload),/別の管理者/);
+    applyUpdate(data,"match",{...payload,status:"未開始",winnerId:"",expectedStatus:"終了",expectedWinnerId:"draw"});
+    assert.equal(data.matches.find(m=>m.sportId===sportId&&m.id===matchId).winnerId,"");
+  }
+});

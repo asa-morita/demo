@@ -130,7 +130,7 @@ function winnerOptions(match,selected){
       '<option value="'+escapeHTML(id)+'"'+(id===selected?' selected':'')+'>'+
       escapeHTML(matchSportId==="tugofwar"?(index===0?match.labelA:match.labelB):
         data.teams.find(t=>t.id===id)?.name||id)+'</option>'
-    ).join("");
+    ).join("")+'<option value="draw"'+(selected==="draw"?' selected':'')+'>引き分け</option>';
 }
 
 function renderHeats(){
@@ -179,7 +179,7 @@ function renderMatches(){
       (match.issue?'<p class="problem-text">'+escapeHTML(match.issue)+'</p>':'')+
       '<div class="fields">'+
       '<label>試合状態<select name="status" required>'+statusOptions+'</select></label>'+
-      '<label>勝者<select name="winnerId"'+(status!=="終了"?' disabled':'')+'>'+
+      '<label>試合結果<select name="winnerId"'+(status!=="終了"?' disabled':'')+'>'+
         winnerOptions(match,winner)+'</select></label>'+
       '<label>'+escapeHTML(match.labelA)+'の得点<input name="scoreA" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreA??"")+'" placeholder="任意"></label>'+
       '<label>'+escapeHTML(match.labelB)+'の得点<input name="scoreB" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreB??"")+'" placeholder="任意"></label>'+
@@ -424,7 +424,7 @@ $("matchList").addEventListener("submit",async event=>{
   const status=field("status");
   const winnerId=status==="終了"?field("winnerId"):"";
   if(status==="終了"&&!winnerId){
-    showMessage("終了した試合の勝者を選択してください。","error");return;
+    showMessage("終了した試合の勝者または引き分けを選択してください。","error");return;
   }
   await save(form,"match",{
     sportId:matchSportId,matchId:row.id,status,winnerId,
@@ -442,4 +442,5 @@ window.addEventListener("beforeunload",event=>{
   event.returnValue="";
 });
 init();
+
 

@@ -139,3 +139,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 
 .menu-pr-number{display:block;margin:6px 3px 0;text-align:right;font-size:10px;line-height:1.4;color:#737b85;text-decoration:none}
 .menu-pr-number:hover{text-decoration:underline}
+
+
+.round-robin-table .matrix-draw{background:#e8e9fb;color:#41457d}
+.matrix-legend__item .matrix-draw{background:#e8e9fb}

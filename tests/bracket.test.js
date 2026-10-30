@@ -159,7 +159,7 @@ test("score columns are optional and can infer a winner for legacy data",()=>{
   game.scoreA=3;game.scoreB=1;
   assert.equal(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").winner,"A");
   game.scoreB=3;
-  assert.match(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").issue,/引き分け不可/);
+  assert.match(buildRoundRobin(d,"volleyball").all.find(m=>m.id==="R1M1").issue,/勝者または引き分け/);
 });
 test("missing team or incomplete matches never produce an overall award",()=>{
   const d=fresh();
@@ -310,3 +310,31 @@ test("total points are masked only in the public display while ranking stays int
   assert.equal(formatOverallPoints(0,false),"⁇?");
 });
 
+
+
+test("explicit draws finish round robin and tug sports without awarding wins or losses",()=>{
+  const d=fresh();
+  for(const m of d.matches){m.status="終了";m.winnerId="draw";m.scoreA=0;m.scoreB=0;}
+  for(const id of ["volleyball","tugofwar"]){
+    const league=id==="tugofwar"?buildTugOfWar(d):buildRoundRobin(d,id);
+    assert.equal(league.completed,true);
+    assert.equal(league.all.every(m=>m.draw&&!m.winner&&!m.issue),true);
+    for(const row of league.standings){
+      assert.equal(row.draws,3);assert.equal(row.played,3);
+      assert.equal(row.wins,0);assert.equal(row.losses,0);assert.equal(row.rank,1);
+    }
+  }
+  const matrix=buildRoundRobinMatrix(buildRoundRobin(d,"volleyball"),d.teams);
+  assert.equal(matrix[0][1].kind,"draw");assert.equal(matrix[1][0].kind,"draw");
+  assert.equal(computeOverall(d).completedSports,5);
+  assert.equal(computeOverall(d).rows.every(r=>r.points===150),true);
+  // Scores remain independent of the explicitly selected result.
+  match(d,"volleyball","R3M1").scoreA=12;
+  assert.equal(buildRoundRobin(d,"volleyball").all[0].draw,true);
+  match(d,"volleyball","R3M1").winnerId="A";
+  const rows=buildRoundRobin(d,"volleyball").standings;
+  assert.equal(rows.find(r=>r.id==="A").wins,1);
+  assert.equal(rows.find(r=>r.id==="B").losses,1);
+  assert.equal(rows.find(r=>r.id==="C").draws,3);
+  assert.equal(rows.find(r=>r.id==="C").rank,rows.find(r=>r.id==="D").rank);
+});
