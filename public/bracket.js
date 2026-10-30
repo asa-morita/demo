@@ -82,27 +82,35 @@ export function buildRoundRobin(data,sportId) {
     else if(row.status!=="終了"&&row.winnerId)
       issue="試合終了前に勝者IDが登録されています";
     let winner=null;
-    if(row.status==="終了"&&!issue) {
+    const draw=row.status==="終了"&&row.winnerId==="draw"&&!issue;
+    if(row.status==="終了"&&!issue&&!draw) {
       if(row.winnerId) {
         if(row.winnerId===teamA||row.winnerId===teamB)winner=row.winnerId;
         else issue="勝者IDが対戦チームと一致しません";
       } else if(row.scoreA!==null&&row.scoreA!==undefined&&row.scoreB!==null&&row.scoreB!==undefined&&row.scoreA!==row.scoreB)
         winner=row.scoreA>row.scoreB?teamA:teamB;
-      else issue="勝者が未登録です（引き分け不可）";
+      else issue="勝者または引き分けを選択してください";
     }
     return {
       id:f.id,round:f.round,teamA,teamB,
       labelA:names.get(teamA)||"対戦相手未定",labelB:names.get(teamB)||"対戦相手未定",
-      status:issue?"要確認":row.status||"未開始",issue,winner,
+      status:issue?"要確認":row.status||"未開始",issue,winner,draw,
       loser:winner?(winner===teamA?teamB:teamA):null,
       scoreA:row.scoreA??null,scoreB:row.scoreB??null,
       court:row.court||"",scheduledAt:row.scheduledAt||""
     };
   });
   const rounds=ROUNDS.map(r=>({...r,matches:all.filter(m=>m.round===r.id)}));
-  const standings=teams.map(t=>({id:t.id,name:t.name||t.id,wins:0,losses:0,played:0,rank:null}));
+  const standings=teams.map(t=>({id:t.id,name:t.name||t.id,wins:0,losses:0,draws:0,played:0,rank:null}));
   const stats=new Map(standings.map(r=>[r.id,r]));
   for(const game of all) {
+    if(game.draw){
+      for(const id of [game.teamA,game.teamB]){
+        const team=stats.get(id);
+        if(team){team.draws++;team.played++;}
+      }
+      continue;
+    }
     if(!game.winner)continue;
     const winner=stats.get(game.winner),loser=stats.get(game.loser);
     if(!winner||!loser)continue;
@@ -126,7 +134,7 @@ export function buildRoundRobin(data,sportId) {
     } else for(let i=start;i<end;i++)standings[i].rank=start+1;
     start=end;
   }
-  const completed=teams.length===4&&new Set(teams.map(t=>t.id)).size===4&&all.every(m=>m.winner&&!m.issue);
+  const completed=teams.length===4&&new Set(teams.map(t=>t.id)).size===4&&all.every(m=>(m.winner||m.draw)&&!m.issue);
   const ranks=completed?standings.map(t=>({teamId:t.id,rank:t.rank})):[];
   return {sport,rounds,all,standings,completed,ranks};
 }
@@ -144,6 +152,8 @@ export function buildRoundRobinMatrix(league,teams) {
     const match=pairs.get([row.id,opponent.id].sort().join("::"));
     if(!match||match.status==="要確認")
       return {kind:"invalid",text:"要確認",round:match?.round||"",match:match||null};
+    if(match.draw)
+      return {kind:"draw",text:"引分",round:match.round,match};
     if(match.winner)
       return {kind:match.winner===row.id?"win":"loss",text:match.winner===row.id?"勝":"敗",round:match.round,match};
     if(match.status==="試合中")
@@ -187,26 +197,28 @@ export function buildTugOfWar(data){
     else if(row.teamA!==teamA||row.teamB!==teamB)issue="登録チームが対戦予定と一致しません";
     else if(!["未開始","試合中","終了"].includes(row.status))issue="試合状態が不正です";
     else if(row.status!=="終了"&&row.winnerId)issue="試合終了前に勝者IDが登録されています";
-    else if(row.status==="終了"&&![teamA,teamB].includes(row.winnerId))issue="勝者の組が未登録または不正です";
+    else if(row.status==="終了"&&![teamA,teamB,"draw"].includes(row.winnerId))issue="勝者の組または引き分けを選択してください";
     return {
       id:fixture.id,label:"第"+(index+1)+"試合",sideA,sideB,teamA,teamB,
       labelA:sideA.map(teamName).join("＋"),labelB:sideB.map(teamName).join("＋"),
       status:issue?"要確認":row.status||"未開始",issue,
-      winner:issue?null:(row.status==="終了"?row.winnerId:null),
+      winner:issue?null:(row.status==="終了"&&row.winnerId!=="draw"?row.winnerId:null),
+      draw:!issue&&row.status==="終了"&&row.winnerId==="draw",
       scoreA:row.scoreA??null,scoreB:row.scoreB??null,
       court:row.court||"",scheduledAt:row.scheduledAt||""
     };
   });
   const standings=teams.map(team=>{
-    const completedGames=all.filter(m=>m.winner&&([ ...m.sideA,...m.sideB].includes(team.id)));
+    const completedGames=all.filter(m=>(m.winner||m.draw)&&([ ...m.sideA,...m.sideB].includes(team.id)));
     return {id:team.id,name:team.name||team.id,played:completedGames.length,
-      wins:completedGames.filter(m=>(m.winner===m.teamA?m.sideA:m.sideB).includes(team.id)).length,
-      losses:completedGames.filter(m=>(m.winner===m.teamA?m.sideB:m.sideA).includes(team.id)).length,
+      wins:completedGames.filter(m=>m.winner&&(m.winner===m.teamA?m.sideA:m.sideB).includes(team.id)).length,
+      losses:completedGames.filter(m=>m.winner&&(m.winner===m.teamA?m.sideB:m.sideA).includes(team.id)).length,
+      draws:completedGames.filter(m=>m.draw).length,
       rank:null};
   }).sort((a,b)=>b.wins-a.wins||a.name.localeCompare(b.name,"ja"));
   // Shared alliances mean there is no individual direct head-to-head tiebreak.
   standings.forEach((r,i)=>{r.rank=i&&r.wins===standings[i-1].wins?standings[i-1].rank:i+1});
-  const completed=unique&&all.every(m=>m.winner&&!m.issue);
+  const completed=unique&&all.every(m=>(m.winner||m.draw)&&!m.issue);
   return {sport,all,standings,completed,ranks:completed?standings.map(r=>({teamId:r.id,rank:r.rank})):[]};
 }
 
@@ -282,4 +294,5 @@ export function computeOverall(data) {
   rows.forEach((r,i)=>{r.rank=completedSports===0?null:(i===0?1:(rows[i-1].points===r.points&&rows[i-1].first===r.first&&rows[i-1].second===r.second&&rows[i-1].third===r.third?rows[i-1].rank:i+1))});
   return {rows,completedSports,totalSports:data.sports.length,sportsSummary};
 }
+
 
