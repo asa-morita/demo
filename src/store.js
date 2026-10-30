@@ -97,8 +97,8 @@ export function validateMatchUpdate(input,data){
   if(match.teamA!==teamA||match.teamB!==teamB)throw error("対戦カードのチームが一致しません");
   const status=clean(input.status),winnerId=clean(input.winnerId);
   if(!["未開始","試合中","終了"].includes(status))throw error("試合状態が不正です");
-  if(status==="終了"&&![teamA,teamB].includes(winnerId))
-    throw error("終了した試合の勝者を選択してください");
+  if(status==="終了"&&![teamA,teamB,"draw"].includes(winnerId))
+    throw error("終了した試合の勝者または引き分けを選択してください");
   if(status!=="終了"&&winnerId)throw error("未開始・試合中の勝者は空欄にしてください");
   const court=optionalString(input.court??"","コート",80);
   const scheduledAt=optionalString(input.scheduledAt??"","開始予定",80);
@@ -239,4 +239,5 @@ export class TournamentStore {
     return respond({error:"Not found"},404);
   }
 }
+
 
