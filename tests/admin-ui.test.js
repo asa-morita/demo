@@ -220,12 +220,12 @@ test("admin draw selection persists and can be changed back to a winning team",a
     change(window,form.elements.namedItem("winnerId"),"draw");
     submit(window,form);
     await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId===sportId&&m.id===id)?.winnerId==="draw","引き分け保存");
-    await waitFor(()=>doc.querySelector('form[data-match-id="'+id+'"]').elements.namedItem("winnerId").value==="draw","引き分け再表示");
+    await waitFor(()=>{const next=doc.querySelector('form[data-match-id="'+id+'"]');return next!==form&&next.elements.namedItem("winnerId").value==="draw"},"引き分け再表示");
     form=doc.querySelector('form[data-match-id="'+id+'"]');
     const winner=sportId==="tugofwar"?"A+B":"A";
     change(window,form.elements.namedItem("winnerId"),winner);
     submit(window,form);
     await waitFor(()=>ctx.getData()?.matches.find(m=>m.sportId===sportId&&m.id===id)?.winnerId===winner,"勝者への変更");
-    await settle();
+    await waitFor(()=>{const next=doc.querySelector('form[data-match-id="'+id+'"]');return next!==form&&next.elements.namedItem("winnerId").value===winner},"変更結果の再表示");
   }
 });
