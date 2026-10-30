@@ -131,3 +131,20 @@ test("scores render from each row team's perspective and clear without phantom z
   assert.equal(page.document.querySelector(".tug-fixture .match-score").textContent,"2–0");
 });
 
+
+
+test("public draws show mirrored results, draw counts and the next fixture",async t=>{
+  const page=await setup();t.after(page.close);
+  page.selectSport("basketball");
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="basketball"&&m.id==="R3M1"),
+    {status:"終了",winnerId:"draw",scoreA:12,scoreB:12}));
+  assert.equal(page.document.querySelectorAll("td.matrix-draw").length,2);
+  assert.equal([...page.document.querySelectorAll("td.matrix-draw")].every(e=>e.textContent.includes("引分")),true);
+  assert.equal([...page.document.querySelectorAll("td.matrix-next")].every(e=>e.title.includes("第2試合")),true);
+  const rows=[...page.document.querySelectorAll(".standings-wrap tbody tr")];
+  assert.equal(rows.filter(r=>r.lastElementChild.textContent==="1").length,2);
+  page.selectSport("tugofwar");
+  await page.update(data=>Object.assign(data.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1"),{status:"終了",winnerId:"draw"}));
+  assert.equal(page.document.querySelector(".tug-fixture .tug-winner").textContent,"引き分け");
+  assert.equal([...page.document.querySelectorAll(".standings-wrap tbody tr")].every(r=>r.lastElementChild.textContent==="1"),true);
+});
