@@ -10,6 +10,13 @@ const section=(heading,subtitle,body)=>`<section class="content-card"><h2 class=
 const hasScores=m=>m&&Number.isInteger(m.scoreA)&&Number.isInteger(m.scoreB)&&m.scoreA>=0&&m.scoreB>=0;
 const scoreText=(m,teamId)=>hasScores(m)?(teamId===m.teamB?`${m.scoreB}–${m.scoreA}`:`${m.scoreA}–${m.scoreB}`):"";
 const validClock=(s)=>/^(?:[01]?\d|2[0-3]):[0-5]\d$/.test(s||"");
+const hasAwardedPoints=items=>items.some(item=>item.status==="終了"&&!item.issue&&Object.values(item.awardedPoints||{}).some(value=>value!==null));
+function awardedPointsDisplay(record,data){
+  if(record.status!=="終了"||record.issue)return "";
+  const values=data.teams.filter(team=>record.awardedPoints?.[team.id]!==null&&record.awardedPoints?.[team.id]!==undefined)
+    .map(team=>esc(team.name)+" "+esc(formatOverallPoints(record.awardedPoints[team.id],data.pointsVisible))+"pt");
+  return values.length?'<p class="awarded-points-display">総合ポイント：'+values.join(" ／ ")+'</p>':"";
+}
 function renderSchedule(data) {
   const rows=data.sports.map((s,index)=>{
     const start=validClock(s.startTime)?s.startTime:"";
@@ -54,7 +61,7 @@ function renderBorrowed(data){
       '<span class="match-state">'+esc(heat.status)+'</span></div>'+
       (heat.scheduledAt?'<p class="muted">開始予定：'+esc(heat.scheduledAt)+'</p>':'')+
       (heat.issue?'<p class="problem-text">'+esc(heat.issue)+'</p>':'')+
-      '<div class="borrowed-places">'+cells+'</div></div>';
+      '<div class="borrowed-places">'+cells+'</div>'+awardedPointsDisplay(heat,data)+'</div>';
   }).join("");
   const rows=race.standings.map(t=>'<tr class="'+(race.completed&&t.rank===1?'leader':'')+'">'+
     '<td><span class="rank-symbol">'+(t.rank??'–')+'</span></td><td>'+esc(t.name)+'</td>'+
@@ -65,7 +72,7 @@ function renderBorrowed(data){
     '<div class="borrowed-heats">'+heats+'</div>')+
     section("借人競争の総合結果",
       race.completed?'全4回の順位が確定しました。':'実施済みの回だけを集計した暫定順位です。',
-      summary+'<p class="point-note">各回の順位（1〜4位）を合計し、数字が小さいチームを上位とします。合計が同じなら同順位です。4回すべて終了すると、競技別順位に応じて総合ポイントが加算されます。</p>');
+      summary+'<p class="point-note">各回の順位（1〜4位）を合計し、数字が小さいチームを上位とします。合計が同じなら同順位です。総合ポイントの任意入力がある場合は入力値の合計を随時反映します。全回が空欄なら、4回すべて終了後に競技別順位で自動加点します。</p>');
 }
 function renderTugOfWar(data){
   const league=buildTugOfWar(data);
@@ -80,6 +87,7 @@ function renderTugOfWar(data){
       ${hasScores(m)?`<span class="match-score" aria-label="${esc(m.labelA)} ${m.scoreA}点、${esc(m.labelB)} ${m.scoreB}点">${scoreText(m)}</span>`:""}
       <span class="status-tag ${m.status==="試合中"?"live":""}">${esc(m.status)}</span>
       ${m.draw?`<span class="tug-winner">引き分け</span>`:winner?`<span class="tug-winner">勝利：${esc(winner)}</span>`:""}
+      ${awardedPointsDisplay(m,data)}
       ${m.issue?`<p class="problem-text">${esc(m.issue)}</p>`:""}
       ${m.scheduledAt?`<p class="muted">開始予定：${esc(m.scheduledAt)}</p>`:""}
     </div>`;
@@ -91,9 +99,9 @@ function renderTugOfWar(data){
     `第1試合〜第3試合（各チーム3戦） ／ ${league.completed?"全試合確定":"進行中・未確定"}`,
     `<div class="results-list">${fixtures}</div>`)+
     section("綱引きの競技別順位",
-      league.completed?"全3試合の結果による確定順位です。":"現在の勝利数による暫定順位です。総合ポイントは全3試合終了後に反映されます。",
+      league.completed?"全3試合の結果による確定順位です。":"現在の勝利数による暫定順位です。"+(hasAwardedPoints(league.all)?"入力済みの総合ポイントを反映中です。":"総合ポイントは全3試合終了後に反映されます。"),
       `<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>勝</th><th>敗</th><th>引分</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="point-note">各試合では勝利した2チームの両方に1勝を加算します。引き分けは4チームすべてに1引分を加算し、勝敗は加算しません。勝利数が同じ場合は同順位です。全3試合終了後に総合ポイントを反映します。</p>`);
+      <p class="point-note">各試合では勝利した2チームの両方に1勝を加算します。引き分けは4チームすべてに1引分を加算し、勝敗は加算しません。勝利数が同じ場合は同順位です。任意の総合ポイントがある場合は入力値の合計を随時反映します。全試合が空欄なら、全3試合終了後に順位で自動加点します。</p>`);
 }
 function renderBracket(data){
   if(state.sport==="borrowed")return renderBorrowed(data);
@@ -150,12 +158,12 @@ function renderStandings(data){
      <td><span class="rank-symbol">${r.rank??"–"}</span></td><td>${esc(r.name)}</td><td class="num">${esc(formatOverallPoints(r.points,data.pointsVisible))}</td><td class="num">${r.first}</td><td class="num">${r.second}</td><td class="num">${r.third}</td>
   </tr>`).join("");
   const listing=`<div class="standings-wrap"><table><thead><tr><th>順位</th><th>チーム</th><th>合計pt</th><th>優勝</th><th>準優勝</th><th>3位</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  const note=`<p class="point-note">2チーム対抗競技は全6試合、綱引きは2チーム合同の全3試合が確定すると加点します。借人競争は全4回の順位を合算し、順位合計が小さいチームを上位として4回すべて終了後に加点します。同順位は同額加点です。総合順位の同点は優勝・準優勝・3位の回数で比較し、なお同数なら同順位とします。配点は1位30点、2位20点、3位10点で固定です。</p>`;
+  const note=`<p class="point-note">通常は各競技の全試合・全回終了後に、順位に応じて1位30点、2位20点、3位10点を自動加算します。同順位は同額です。綱引き・借人競争で総合ポイントを任意入力した競技は、終了済みの各試合・各回の入力値を合計して随時反映し、順位による自動加点は行いません。総合順位の同点は優勝・準優勝・3位の回数で比較し、なお同数なら同順位とします。</p>`;
   const points=Object.entries(data.points).sort((a,b)=>Number(a[0])-Number(b[0])).map(([rank,score])=>`${rank}位 ${score}pt`).join(" ／ ");
   return section("総合順位",`確定：${overall.completedSports}/${overall.totalSports}競技　／　未確定：${inProgress}競技`,
-    listing+note)+section("ポイント配点","競技別の結果を総合得点に換算します。",
+    listing+note)+section("ポイント配点","通常は競技別順位で自動配点します。綱引き・借人競争の任意入力ポイントを優先します。",
       `<div class="point-note">${esc(points||"配点がまだ設定されていません。")}</div>`+
-      `<div class="results-group"><h3>競技別の確定状況</h3><div class="results-list">${overall.sportsSummary.map(s=>`<div class="result-row"><span class="versus">${esc(s.name)}</span><span class="status-tag ${s.completed?"":"live"}">${s.completed?"確定":"未確定"}</span></div>`).join("")}</div></div>`);
+      `<div class="results-group"><h3>競技別の確定状況</h3><div class="results-list">${overall.sportsSummary.map(s=>`<div class="result-row"><span class="versus">${esc(s.name)}</span><span class="status-tag ${s.completed?"":"live"}">${s.manualPoints?(s.completed?"入力ポイント確定":"入力ポイント反映中"):s.completed?"確定":"未確定"}</span></div>`).join("")}</div></div>`);
 }
 
 function render(){
@@ -242,4 +250,5 @@ setInterval(async()=>{
   if(versionPollCount%6===0)await checkScreenVersion();
 },5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){refresh();checkScreenVersion()}});
+
 
