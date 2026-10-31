@@ -440,3 +440,32 @@ test("draw results save for both formats and enforce status and stale result che
     assert.equal(data.matches.find(m=>m.sportId===sportId&&m.id===matchId).winnerId,"");
   }
 });
+
+
+test("manual event points validate team maps, status, bounds and concurrent edits",()=>{
+  const blank={A:null,B:null,C:null,D:null};
+  for(const kind of ["match","heat"]){
+    const fresh=()=>createDefaultData();
+    const input=kind==="match"?{sportId:"tugofwar",matchId:"T1",status:"終了",winnerId:"A+B",court:"",scheduledAt:"",expectedStatus:"未開始",expectedWinnerId:"",expectedCourt:"",expectedScheduledAt:""}
+      :{heatId:"H1",status:"終了",ranks:{A:1,B:2,C:3,D:4},scheduledAt:"",expectedStatus:"未開始",expectedRanks:{A:0,B:0,C:0,D:0},expectedScheduledAt:""};
+    const payload={...input,awardedPoints:{A:20,B:0,C:null,D:5},expectedAwardedPoints:blank};
+    const getRecord=data=>kind==="match"?data.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1"):data.heats[0];
+    for(const points of [null,[],{A:1},{...blank,Z:3},{...blank,A:-1},{...blank,A:1.5},{...blank,A:"1"},{...blank,A:10000}])
+      assert.throws(()=>applyUpdate(fresh(),kind,{...payload,awardedPoints:points}),/ポイント|得点/);
+    assert.throws(()=>applyUpdate(fresh(),kind,{...payload,expectedAwardedPoints:undefined}),/変更前/);
+    assert.throws(()=>applyUpdate(fresh(),kind,{...payload,status:"試合中",winnerId:"",ranks:{A:0,B:0,C:0,D:0}}),/終了/);
+    const data=fresh();applyUpdate(data,kind,payload);
+    assert.deepEqual(getRecord(data).awardedPoints,payload.awardedPoints);
+    const current={...input,expectedStatus:"終了",expectedWinnerId:"A+B",expectedRanks:{A:1,B:2,C:3,D:4}};
+    // Legacy clients preserve manual points when they edit the result.
+    applyUpdate(data,kind,current);
+    assert.deepEqual(getRecord(data).awardedPoints,payload.awardedPoints);
+    assert.throws(()=>applyUpdate(data,kind,{...current,awardedPoints:blank,expectedAwardedPoints:blank}),/別の管理者/);
+    applyUpdate(data,kind,{...current,awardedPoints:{...blank,A:9999},expectedAwardedPoints:payload.awardedPoints});
+    assert.equal(getRecord(data).awardedPoints.A,9999);
+    // Returning to an unfinished state cancels this record's contribution.
+    applyUpdate(data,kind,{...current,status:"未開始",winnerId:"",ranks:{A:0,B:0,C:0,D:0}});
+    assert.deepEqual(getRecord(data).awardedPoints,blank);
+  }
+  assert.throws(()=>applyUpdate(createDefaultData(),"match",{...initialMatch,awardedPoints:blank,expectedAwardedPoints:blank}),/綱引き・借人競争/);
+});

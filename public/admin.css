@@ -123,3 +123,8 @@ button.primary{background:var(--yellow);border-color:#d0b018;color:#111}
 /* Keep controls and save buttons above the fixed, safe-area-aware footer. */
 main{padding-bottom:calc(125px + env(safe-area-inset-bottom,0px))}
 #editorPanel[hidden] .admin-bottom-nav{display:none}
+
+
+.awarded-points{min-width:0;margin:14px 0;padding:12px;border:1px solid var(--line,#d8dde3);border-radius:10px}
+.awarded-points legend{font-weight:700;font-size:14px}
+.awarded-points p{margin:0 0 10px;font-size:12px;line-height:1.6}

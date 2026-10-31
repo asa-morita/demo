@@ -338,3 +338,31 @@ test("explicit draws finish round robin and tug sports without awarding wins or 
   assert.equal(rows.find(r=>r.id==="C").draws,3);
   assert.equal(rows.find(r=>r.id==="C").rank,rows.find(r=>r.id==="D").rank);
 });
+
+
+test("manual points add immediately across events and replace automatic sport points",()=>{
+  const d=fresh(),blank={A:null,B:null,C:null,D:null};
+  for(const m of d.matches){m.status="未開始";m.winnerId="";}
+  for(const h of d.heats){h.status="未開始";h.ranks={A:0,B:0,C:0,D:0};}
+  const first=match(d,"tugofwar","T1");
+  Object.assign(first,{status:"終了",winnerId:"A+B",awardedPoints:{A:12,B:0,C:null,D:4}});
+  Object.assign(d.heats[0],{status:"終了",ranks:{A:1,B:2,C:3,D:4},awardedPoints:{A:2,B:7,C:0,D:null}});
+  let overall=computeOverall(normalizeData(d));
+  assert.equal(overall.completedSports,0);assert.equal(overall.manualPointsSports,2);
+  assert.deepEqual(Object.fromEntries(overall.rows.map(r=>[r.id,r.points])),{A:14,B:7,D:4,C:0});
+  assert.equal(overall.rows[0].rank,1);
+  for(const m of d.matches.filter(m=>m.sportId==="tugofwar")){m.status="終了";m.winnerId=m.teamA;}
+  overall=computeOverall(normalizeData(d));
+  assert.equal(overall.completedSports,1);
+  assert.equal(overall.rows.find(r=>r.id==="A").points,14,"no extra podium award on completion");
+  first.awardedPoints={...blank,A:0};
+  assert.equal(computeOverall(normalizeData(d)).rows.find(r=>r.id==="A").points,2,"explicit zero overrides automatic sport award");
+  first.awardedPoints=blank;
+  overall=computeOverall(normalizeData(d));
+  assert.equal(overall.manualPointsSports,1);
+  assert.equal(overall.rows.find(r=>r.id==="A").points,32,"clearing every point restores default sport award");
+  d.heats[0].status="未開始";d.heats[0].ranks={A:0,B:0,C:0,D:0};
+  overall=computeOverall(normalizeData(d));
+  assert.equal(overall.manualPointsSports,0);
+  assert.equal(overall.rows.find(r=>r.id==="A").points,30,"unfinished records cannot add points");
+});
