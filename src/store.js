@@ -76,6 +76,24 @@ function optionalScore(value){
     throw error("得点は0〜9999の整数で入力してください");
   return value;
 }
+function validateAwardedPoints(input,record,status,teams){
+  if(!Object.hasOwn(input,"awardedPoints")){
+    if(status!=="終了"&&record.awardedPoints)
+      return Object.fromEntries(teams.map(t=>[t.id,null]));
+    return record.awardedPoints;
+  }
+  const ids=teams.map(t=>t.id);
+  for(const [value,label] of [[input.awardedPoints,"総合ポイント"],[input.expectedAwardedPoints,"変更前の総合ポイント"]]){
+    if(!value||typeof value!=="object"||Array.isArray(value)||
+       Object.keys(value).length!==ids.length||ids.some(id=>!Object.hasOwn(value,id)))
+      throw error(label+"は4チーム分を指定してください");
+  }
+  const points=Object.fromEntries(ids.map(id=>[id,optionalScore(input.awardedPoints[id])]));
+  if(status!=="終了"&&Object.values(points).some(n=>n!==null))
+    throw error("総合ポイントは終了した試合・回に入力してください");
+  for(const id of ids)assertExpected(record.awardedPoints?.[id]??null,input.expectedAwardedPoints[id]);
+  return points;
+}
 function findSport(data,id){
   const sport=data.sports.find(s=>s.id===id);
   if(!sport)throw error("競技が見つかりません");
@@ -100,6 +118,9 @@ export function validateMatchUpdate(input,data){
   if(status==="終了"&&![teamA,teamB,"draw"].includes(winnerId))
     throw error("終了した試合の勝者または引き分けを選択してください");
   if(status!=="終了"&&winnerId)throw error("未開始・試合中の勝者は空欄にしてください");
+  if(!isTug&&Object.hasOwn(input,"awardedPoints"))
+    throw error("任意の総合ポイントは綱引き・借人競争で入力してください");
+  const awardedPoints=isTug?validateAwardedPoints(input,match,status,data.teams):undefined;
   const court=optionalString(input.court??"","コート",80);
   const scheduledAt=optionalString(input.scheduledAt??"","開始予定",80);
   const editsScores=Object.hasOwn(input,"scoreA")||Object.hasOwn(input,"scoreB");
@@ -114,7 +135,7 @@ export function validateMatchUpdate(input,data){
   assertExpected(match.winnerId,clean(input.expectedWinnerId));
   assertExpected(match.court,clean(input.expectedCourt));
   assertExpected(match.scheduledAt,clean(input.expectedScheduledAt));
-  return {match,status,winnerId,court,scheduledAt,scoreA,scoreB,sportId,matchId};
+  return {match,status,winnerId,court,scheduledAt,scoreA,scoreB,sportId,matchId,awardedPoints};
 }
 
 export function validateHeatUpdate(input,data){
@@ -145,7 +166,8 @@ export function validateHeatUpdate(input,data){
   assertExpected(heat.scheduledAt,clean(input.expectedScheduledAt));
   if(!input.expectedRanks||typeof input.expectedRanks!=="object")throw error("変更前の順位が不正です");
   for(const id of ids)assertExpected(heat.ranks?.[id]??0,input.expectedRanks[id]);
-  return {heat,status,ranks,scheduledAt,heatId};
+  const awardedPoints=validateAwardedPoints(input,heat,status,data.teams);
+  return {heat,status,ranks,scheduledAt,heatId,awardedPoints};
 }
 export function validateTeamUpdate(input,data){
   if(!input||typeof input!=="object")throw error("チームデータが不正です");
@@ -187,11 +209,13 @@ export function applyUpdate(data,kind,input){
   if(kind==="heat"){
     const u=validateHeatUpdate(input,data);
     Object.assign(u.heat,{status:u.status,ranks:u.ranks,scheduledAt:u.scheduledAt});
+    if(u.awardedPoints!==undefined)u.heat.awardedPoints=u.awardedPoints;
     return {heatId:u.heatId,status:u.status,ranks:u.ranks};
   }
   if(kind==="match"){
     const u=validateMatchUpdate(input,data);
     Object.assign(u.match,{status:u.status,winnerId:u.winnerId,court:u.court,scheduledAt:u.scheduledAt,scoreA:u.scoreA,scoreB:u.scoreB});
+    if(u.awardedPoints!==undefined)u.match.awardedPoints=u.awardedPoints;
     return {sportId:u.sportId,matchId:u.matchId,status:u.status,winnerId:u.winnerId};
   }
   if(kind==="team"){
@@ -239,5 +263,6 @@ export class TournamentStore {
     return respond({error:"Not found"},404);
   }
 }
+
 
 
