@@ -133,6 +133,28 @@ function winnerOptions(match,selected){
     ).join("")+'<option value="draw"'+(selected==="draw"?' selected':'')+'>引き分け</option>';
 }
 
+function awardedPointsFields(record){
+  return '<fieldset class="awarded-points"><legend>総合ポイント（任意）</legend>'+
+    '<p class="muted">入力すると終了済みの各試合・各回のポイント合計を総合順位へ反映します。この競技の順位による自動加点は行いません。この競技の全試合・全回が空欄なら従来の自動配点です。0は指定済みの0点です。</p>'+
+    '<div class="fields">'+data.teams.map(team=>'<label>'+escapeHTML(team.name)+
+      '<input name="points-'+escapeHTML(team.id)+'" type="number" min="0" max="9999" step="1" inputmode="numeric" placeholder="任意" value="'+
+      escapeHTML(record?.awardedPoints?.[team.id]??"")+'"'+(record?.status!=="終了"?' disabled':'')+'></label>').join("")+'</div></fieldset>';
+}
+function awardedPointsInput(form,status,record){
+  return {
+    awardedPoints:Object.fromEntries(data.teams.map(team=>{
+      const value=form.elements.namedItem("points-"+team.id).value;
+      return [team.id,status==="終了"&&value!==""?Number(value):null];
+    })),
+    expectedAwardedPoints:record.awardedPoints
+  };
+}
+function toggleAwardedPoints(form,status){
+  form.querySelectorAll('input[name^="points-"]').forEach(input=>{
+    input.disabled=status!=="終了";
+    if(input.disabled)input.value="";
+  });
+}
 function renderHeats(){
   const heats=data.heats.filter(h=>h.sportId==="borrowed");
   $("heatList").innerHTML=["H1","H2","H3","H4"].map((id,index)=>{
@@ -152,7 +174,7 @@ function renderHeats(){
       '<span class="match-state">'+escapeHTML(heat.status)+'</span></div>'+
       '<div class="fields"><label>実施状態<select name="status">'+statusOptions+'</select></label>'+
       '<label>開始予定<input name="scheduledAt" maxlength="80" value="'+escapeHTML(heat.scheduledAt||"")+'"></label>'+
-      ranks+'</div><button class="primary save" type="submit">第'+(index+1)+'回の順位を保存</button></form>';
+      ranks+'</div>'+awardedPointsFields(heat)+'<button class="primary save" type="submit">第'+(index+1)+'回の結果を保存</button></form>';
   }).join("");
 }
 function renderMatches(){
@@ -183,7 +205,7 @@ function renderMatches(){
         winnerOptions(match,winner)+'</select></label>'+
       '<label>'+escapeHTML(match.labelA)+'の得点<input name="scoreA" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreA??"")+'" placeholder="任意"></label>'+
       '<label>'+escapeHTML(match.labelB)+'の得点<input name="scoreB" type="number" min="0" max="9999" step="1" inputmode="numeric" value="'+escapeHTML(row?.scoreB??"")+'" placeholder="任意"></label>'+
-      '</div><button class="primary save" type="submit">この試合を保存</button></form>';
+      '</div>'+(matchSportId==="tugofwar"?awardedPointsFields(row):'')+'<button class="primary save" type="submit">この試合を保存</button></form>';
   }).join("")||'<div class="panel empty-state">該当する試合はありません。全試合が終了している場合は、絞り込みを解除してください。</div>';
 }
 function renderBorrowedStandings(){
@@ -381,6 +403,7 @@ $("heatList").addEventListener("change",event=>{
   if(event.target.name!=="status")return;
   const heatForm=event.target.closest("form[data-heat-id]");
   if(!heatForm)return;
+  toggleAwardedPoints(heatForm,event.target.value);
   heatForm.querySelectorAll('select[name^="rank-"]').forEach(select=>{
     select.disabled=event.target.value!=="終了";
     if(select.disabled)select.value="0";
@@ -390,6 +413,7 @@ $("matchList").addEventListener("change",event=>{
   if(event.target.name!=="status")return;
   const winner=event.target.closest("form")?.elements.namedItem("winnerId");
   if(!winner)return;
+  toggleAwardedPoints(event.target.closest("form"),event.target.value);
   winner.disabled=event.target.value!=="終了";
   if(winner.disabled)winner.value="";
 });
@@ -408,10 +432,11 @@ $("heatList").addEventListener("submit",async event=>{
     }
     await save(heatForm,"heat",{
       heatId:heat.id,status,ranks,
+      ...awardedPointsInput(heatForm,status,heat),
       scheduledAt:heatForm.elements.namedItem("scheduledAt").value,
       expectedStatus:heat.status,expectedRanks:heat.ranks,
       expectedScheduledAt:heat.scheduledAt
-    },"第"+heat.id.slice(1)+"回の順位を保存しました。");
+    },"第"+heat.id.slice(1)+"回の結果を保存しました。");
   }
 });
 $("matchList").addEventListener("submit",async event=>{
@@ -428,6 +453,7 @@ $("matchList").addEventListener("submit",async event=>{
   }
   await save(form,"match",{
     sportId:matchSportId,matchId:row.id,status,winnerId,
+    ...(matchSportId==="tugofwar"?awardedPointsInput(form,status,row):{}),
     court:row.court||"",scheduledAt:row.scheduledAt||"",
     scoreA:field("scoreA")===""?null:Number(field("scoreA")),
     scoreB:field("scoreB")===""?null:Number(field("scoreB")),
@@ -442,5 +468,6 @@ window.addEventListener("beforeunload",event=>{
   event.returnValue="";
 });
 init();
+
 
 
