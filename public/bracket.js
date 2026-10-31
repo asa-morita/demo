@@ -30,6 +30,10 @@ export function formatMatchLabel(match) {
 export const PODIUM_POINTS = Object.freeze({1:30,2:20,3:10});
 const norm=(v)=>String(v??"").trim();
 const numeric=(v)=>v===null||v===undefined||norm(v)===""?null:(Number.isFinite(Number(v))?Number(v):null);
+const normalizeAwardedPoints=(points,teams)=>Object.fromEntries((teams||[]).map(team=>{
+  const value=points?.[team.id];
+  return [team.id,Number.isSafeInteger(value)&&value>=0&&value<=9999?value:null];
+}));
 
 export function normalizeData(input) {
   const data=input&&typeof input==="object"?input:{};
@@ -43,12 +47,14 @@ export function normalizeData(input) {
       sportId:norm(m.sportId??m.sport_id),id:norm(m.id??m.match_id).toUpperCase(),
       teamA:norm(m.teamA??m.team_a),teamB:norm(m.teamB??m.team_b),
       scoreA:numeric(m.scoreA??m.score_a),scoreB:numeric(m.scoreB??m.score_b),
+      awardedPoints:normalizeAwardedPoints(m.awardedPoints,data.teams),
       status:norm(m.status)||"未開始",winnerId:norm(m.winnerId??m.winner_id),
       court:norm(m.court),scheduledAt:norm(m.scheduledAt??m.scheduled_at)
     })),
     heats:(Array.isArray(data.heats)?data.heats:[]).map(h=>({
       id:norm(h.id),sportId:norm(h.sportId||"borrowed"),status:norm(h.status)||"未開始",
       ranks:Object.fromEntries(Object.entries(h.ranks||{}).map(([id,rank])=>[id,Number(rank)||0])),
+      awardedPoints:normalizeAwardedPoints(h.awardedPoints,data.teams),
       scheduledAt:norm(h.scheduledAt)
     })),
     points:{...PODIUM_POINTS},pointsVisible:data.pointsVisible!==false,
@@ -204,6 +210,7 @@ export function buildTugOfWar(data){
       status:issue?"要確認":row.status||"未開始",issue,
       winner:issue?null:(row.status==="終了"&&row.winnerId!=="draw"?row.winnerId:null),
       draw:!issue&&row.status==="終了"&&row.winnerId==="draw",
+      awardedPoints:normalizeAwardedPoints(row.awardedPoints,teams),
       scoreA:row.scoreA??null,scoreB:row.scoreB??null,
       court:row.court||"",scheduledAt:row.scheduledAt||""
     };
@@ -249,7 +256,8 @@ export function buildBorrowed(data){
     else if(record.status==="終了"&&!finalValid)issue="終了した回には4チームの異なる順位が必要です";
     else if(record.status!=="終了"&&!unranked)issue="未終了の回には順位を付けられません";
     return {id,label:"第"+(index+1)+"回",status:issue?"要確認":record.status,
-      ranks,scheduledAt:record.scheduledAt||"",issue,finished:!issue&&record.status==="終了"};
+      ranks,awardedPoints:normalizeAwardedPoints(record.awardedPoints,teams),
+      scheduledAt:record.scheduledAt||"",issue,finished:!issue&&record.status==="終了"};
   });
   const completedHeats=all.filter(h=>h.finished).length;
   const standings=teams.map(team=>{
@@ -274,16 +282,25 @@ export function formatOverallPoints(points,visible=true){
 export function computeOverall(data) {
   const table=new Map(data.teams.map(t=>[t.id,{id:t.id,name:t.name,points:0,first:0,second:0,third:0,participations:0}]));
   let completedSports=0;
+  let manualPointsSports=0;
   const sportsSummary=[];
   for(const sport of data.sports){
     const league=sport.id==="borrowed"?buildBorrowed(data):sport.id==="tugofwar"?buildTugOfWar(data):buildRoundRobin(data,sport.id);
-    sportsSummary.push({name:sport.name,completed:league.completed});
+    const manualRecords=["tugofwar","borrowed"].includes(sport.id)
+      ?league.all.filter(record=>!record.issue&&record.status==="終了"):[];
+    const manualPoints=manualRecords.some(record=>Object.values(record.awardedPoints||{}).some(value=>value!==null));
+    sportsSummary.push({name:sport.name,completed:league.completed,manualPoints});
+    if(manualPoints){
+      manualPointsSports++;
+      for(const record of manualRecords)for(const item of table.values())
+        item.points+=record.awardedPoints?.[item.id]??0;
+    }
     if(!league.completed)continue;
     completedSports++;
     for(const r of league.ranks){
       const item=table.get(r.teamId);
       if(!item)continue;
-      item.points+=PODIUM_POINTS[r.rank]??0;
+      if(!manualPoints)item.points+=PODIUM_POINTS[r.rank]??0;
       item.participations++;
       if(r.rank===1)item.first++;
       if(r.rank===2)item.second++;
@@ -291,8 +308,9 @@ export function computeOverall(data) {
     }
   }
   const rows=[...table.values()].sort((a,b)=>b.points-a.points||b.first-a.first||b.second-a.second||b.third-a.third||a.name.localeCompare(b.name,"ja"));
-  rows.forEach((r,i)=>{r.rank=completedSports===0?null:(i===0?1:(rows[i-1].points===r.points&&rows[i-1].first===r.first&&rows[i-1].second===r.second&&rows[i-1].third===r.third?rows[i-1].rank:i+1))});
-  return {rows,completedSports,totalSports:data.sports.length,sportsSummary};
+  rows.forEach((r,i)=>{r.rank=completedSports===0&&manualPointsSports===0?null:(i===0?1:(rows[i-1].points===r.points&&rows[i-1].first===r.first&&rows[i-1].second===r.second&&rows[i-1].third===r.third?rows[i-1].rank:i+1))});
+  return {rows,completedSports,manualPointsSports,totalSports:data.sports.length,sportsSummary};
 }
+
 
 
