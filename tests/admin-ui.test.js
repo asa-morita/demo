@@ -229,3 +229,45 @@ test("admin draw selection persists and can be changed back to a winning team",a
     await waitFor(()=>{const next=doc.querySelector('form[data-match-id="'+id+'"]');return next!==form&&next.elements.namedItem("winnerId").value===winner},"変更結果の再表示");
   }
 });
+
+
+test("tug and borrowed points save with results, reload, edit, clear and reset",async t=>{
+  const ctx=await setup();t.after(ctx.close);
+  const {window,document:doc}=ctx;
+  assert.equal(doc.querySelectorAll('#matchList input[name^="points-"]').length,0);
+  change(window,doc.querySelector("#matchSportSelect"),"tugofwar");
+  let form=doc.querySelector('form[data-match-id="T1"]');
+  assert.equal(form.elements.namedItem("points-A").disabled,true);
+  change(window,form.elements.namedItem("status"),"終了");
+  change(window,form.elements.namedItem("winnerId"),"draw");
+  change(window,form.elements.namedItem("points-A"),"12");
+  change(window,form.elements.namedItem("points-B"),"0");
+  const savedTug=()=>ctx.getData()?.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1");
+  submit(window,form);
+  await waitFor(()=>doc.querySelector('form[data-match-id="T1"]')!==form,"綱引き再表示");
+  assert.deepEqual(savedTug().awardedPoints,{A:12,B:0,C:null,D:null});
+  form=doc.querySelector('form[data-match-id="T1"]');
+  assert.equal(form.elements.namedItem("points-B").value,"0");
+  assert.equal(form.elements.namedItem("points-C").value,"");
+  change(window,form.elements.namedItem("points-A"),"5");submit(window,form);
+  await waitFor(()=>doc.querySelector('form[data-match-id="T1"]')!==form,"綱引きポイント修正");
+  assert.equal(savedTug().awardedPoints.A,5);
+  form=doc.querySelector('form[data-match-id="T1"]');
+  change(window,form.elements.namedItem("status"),"未開始");submit(window,form);
+  await waitFor(()=>doc.querySelector('form[data-match-id="T1"]')!==form,"綱引き取消");
+  assert.equal(savedTug().awardedPoints.A,null);
+  doc.querySelector('[data-admin-tab="borrowed"]').click();
+  form=doc.querySelector('form[data-heat-id="H1"]');
+  change(window,form.elements.namedItem("status"),"終了");
+  for(const [index,id] of ["A","B","C","D"].entries())change(window,form.elements.namedItem("rank-"+id),String(index+1));
+  change(window,form.elements.namedItem("points-D"),"9");
+  change(window,form.elements.namedItem("points-C"),"0");submit(window,form);
+  await waitFor(()=>doc.querySelector('form[data-heat-id="H1"]')!==form,"借人ポイント保存");
+  assert.deepEqual(ctx.getData().heats[0].awardedPoints,{A:null,B:null,C:0,D:9});
+  form=doc.querySelector('form[data-heat-id="H1"]');
+  assert.equal(form.elements.namedItem("points-D").value,"9");
+  change(window,form.elements.namedItem("points-D"),"");
+  change(window,form.elements.namedItem("points-C"),"");submit(window,form);
+  await waitFor(()=>doc.querySelector('form[data-heat-id="H1"]')!==form,"借人ポイント削除");
+  assert.deepEqual(ctx.getData().heats[0].awardedPoints,{A:null,B:null,C:null,D:null});
+});
