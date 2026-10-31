@@ -148,3 +148,27 @@ test("public draws show mirrored results, draw counts and the next fixture",asyn
   assert.equal(page.document.querySelector(".tug-fixture .tug-winner").textContent,"引き分け");
   assert.equal([...page.document.querySelectorAll(".standings-wrap tbody tr")].every(r=>r.lastElementChild.textContent==="1"),true);
 });
+
+
+test("manual points show in overall totals before completion and respect visibility",async t=>{
+  const page=await setup();t.after(page.close);
+  await page.update(data=>{
+    for(const m of data.matches){m.status="未開始";m.winnerId="";}
+    for(const h of data.heats){h.status="未開始";h.ranks={A:0,B:0,C:0,D:0};}
+    Object.assign(data.matches.find(m=>m.sportId==="tugofwar"&&m.id==="T1"),{status:"終了",winnerId:"A+B",awardedPoints:{A:12,B:0,C:null,D:null}});
+    Object.assign(data.heats[0],{status:"終了",ranks:{A:1,B:2,C:3,D:4},awardedPoints:{A:3,B:null,C:5,D:null}});
+  });
+  page.document.querySelector('[data-tab="standings"]').click();
+  const row=()=>[...page.document.querySelectorAll('.standings-wrap tbody tr')].find(r=>r.children[1].textContent==="Aチーム");
+  assert.equal(row().children[2].textContent,"15");
+  assert.match(page.document.querySelector('#view').textContent,/入力ポイント反映中/);
+  page.document.querySelector('[data-tab="bracket"]').click();page.selectSport("borrowed");
+  assert.match(page.document.querySelector('.awarded-points-display').textContent,/Aチーム 3pt/);
+  await page.update(data=>{data.pointsVisible=false});
+  assert.match(page.document.querySelector('.awarded-points-display').textContent,/⁇\?pt/);
+  assert.doesNotMatch(page.document.querySelector('.awarded-points-display').textContent,/3pt|5pt/);
+  page.selectSport("tugofwar");
+  assert.match(page.document.querySelector('.awarded-points-display').textContent,/⁇\?pt/);
+  page.document.querySelector('[data-tab="standings"]').click();
+  assert.equal(row().children[2].textContent,"⁇?");
+});
